@@ -1,0 +1,18 @@
+[package]
+name = "elfinject"
+version = "0.1.0"
+authors = ["A.F.A.L"]
+edition = "2018"
+description = """
+A utility for analyzing and manipulating ELF-binary objects in a security context
+"""
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+
+[workspace]
+members = [
+    "elf"
+]
+
+[dependencies]
+elf = { path = "./elf" }
