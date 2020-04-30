@@ -5,9 +5,17 @@ use std::error;
 use std::fmt; 
 use std::io::Cursor; 
 use byteorder::*; 
+use std::slice::SliceIndex; 
 
 pub mod phdr; 
 pub mod shrd; 
+
+use phdr::ProgramHeader; 
+use shrd::SectionHeader; 
+
+trait Parseable<T> {  
+    fn parse(bin: &Vec<u8>) -> Result<T>;
+}
 
 #[derive(Debug, Clone)]
 pub enum ParsingError {
@@ -96,18 +104,19 @@ pub struct Elf {
     e_version: Elf_class, 
     e_entry: u64,
     e_flags: u32, 
-    program_hdrs: Vec<phdr::ProgramHeader>,
+    pub program_hdrs: Vec<phdr::ProgramHeader>,
     section_hdrs: Vec<shrd::SectionHeader>
 }
 
-impl Elf {
-    pub fn parse(bin: Vec<u8>) -> Result<Elf> {
+impl Parseable<Elf> for Elf {
+    fn parse(bin: &Vec<u8>) -> Result<Elf> {
         
         if !is_elf(&bin) {
             return Err(ParsingError::NotElf)
         }
-
-        LittleEndian::read_u16(&bin[..4]);        
+ 
+        
+        let shdr_string_idx = LittleEndian::read_u16(&bin[0x3E..0x40]); 
 
         return Ok(Elf{
             e_ident:        String::from("ELF"),
@@ -118,15 +127,18 @@ impl Elf {
             e_type:         parse_type(&bin),
             e_entry:        parse_entry64(&bin),
             e_flags:        0x100,
-            program_hdrs:   vec![],
-            section_hdrs:   vec![]
+            program_hdrs:   parse_program_header(&bin)?,
+            section_hdrs:   parse_section_header(&bin)
         });   
     }
+}
 
+impl Elf {
     pub fn write(path: &str) -> Result<()> {
         Ok(())
     }
 }
+
 
 fn is_elf(bin: &Vec<u8>) -> bool {
     if bin.len() < 4 {
@@ -139,6 +151,23 @@ fn is_elf(bin: &Vec<u8>) -> bool {
        bin[3] == 0x46 { return true }
         
     return false; 
+}
+
+fn parse_program_header(bin: &Vec<u8>) -> Result<Vec<ProgramHeader>> {
+    let phdr_offset = LittleEndian::read_u64(&bin[0x20..0x28]); 
+    let phdr_size = LittleEndian::read_u16(&bin[0x36..0x38]); 
+    let phdr_num = LittleEndian::read_u16(&bin[0x38..0x3A]);
+    
+    let mut phdrs:Vec<ProgramHeader> = vec![]; 
+
+    // loop through all programheaders
+    for i in 0..phdr_num {
+        let start = (phdr_offset+(phdr_size as u64*i as u64) ) as usize; 
+        let end = (phdr_offset+(phdr_size as u64*i as u64)+phdr_size as u64 ) as usize; 
+        phdrs.push(ProgramHeader::parse(&bin[start..end])?)
+    }
+
+    return Ok(phdrs);
 }
 
 fn parse_entry64(bin: &Vec<u8>) -> u64 {
@@ -160,6 +189,14 @@ fn parse_type(bin: &Vec<u8>) -> Elf_type {
         _ => return Elf_type::NONE,
     }
 }
+
+fn parse_section_header(bin: &Vec<u8>) -> Vec<SectionHeader> {
+    let shdr_offset = LittleEndian::read_u64(&bin[0x28..0x30]); 
+    let shdr_size = LittleEndian::read_u16(&bin[0x3A..0x3C]); 
+    let shdr_num = LittleEndian::read_u16(&bin[0x3C..0x3E]); 
+
+    return vec![SectionHeader{}]
+} 
 
 fn parse_arch(bin: &Vec<u8>) -> Elf_arch {
     return match LittleEndian::read_u16(&bin[0x12..0x14]) {
@@ -218,7 +255,6 @@ fn parse_endianness(bin: &Vec<u8>) -> Elf_endiannes {
 }
 
 pub fn read_file(path: &str) -> Result<Elf> {
-    Elf::parse(fs::read(path).expect("Failed to read path")) 
+    let bin = fs::read(path).expect("Failed to read path"); 
+    Elf::parse(&bin) 
 }
-
-// https://digitalguardian.com/blog/best-information-security-podcasts
