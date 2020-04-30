@@ -105,7 +105,7 @@ pub struct Elf {
     e_entry: u64,
     e_flags: u32, 
     pub program_hdrs: Vec<phdr::ProgramHeader>,
-    section_hdrs: Vec<shrd::SectionHeader>
+    pub section_hdrs: Vec<shrd::SectionHeader>
 }
 
 impl Parseable<Elf> for Elf {
@@ -128,7 +128,7 @@ impl Parseable<Elf> for Elf {
             e_entry:        parse_entry64(&bin),
             e_flags:        0x100,
             program_hdrs:   parse_program_header(&bin)?,
-            section_hdrs:   parse_section_header(&bin)
+            section_hdrs:   parse_section_header(&bin)?
         });   
     }
 }
@@ -190,12 +190,21 @@ fn parse_type(bin: &Vec<u8>) -> Elf_type {
     }
 }
 
-fn parse_section_header(bin: &Vec<u8>) -> Vec<SectionHeader> {
+fn parse_section_header(bin: &Vec<u8>) -> Result<Vec<SectionHeader>> {
     let shdr_offset = LittleEndian::read_u64(&bin[0x28..0x30]); 
     let shdr_size = LittleEndian::read_u16(&bin[0x3A..0x3C]); 
     let shdr_num = LittleEndian::read_u16(&bin[0x3C..0x3E]); 
 
-    return vec![SectionHeader{}]
+    let mut shdrs:Vec<SectionHeader> = vec![]; 
+
+    // loop through all programheaders
+    for i in 0..shdr_num {
+        let start = (shdr_offset+(shdr_size as u64*i as u64) ) as usize; 
+        let end = (shdr_offset+(shdr_size as u64*i as u64)+shdr_size as u64 ) as usize; 
+        shdrs.push(SectionHeader::parse(&bin[start..end])?)
+    }
+
+    return Ok(shdrs); 
 } 
 
 fn parse_arch(bin: &Vec<u8>) -> Elf_arch {

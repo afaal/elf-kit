@@ -1,5 +1,6 @@
 use crate::Parseable; 
-use crate::Result; 
+use crate::Result;
+ 
 use byteorder::*; 
 
 
@@ -112,12 +113,18 @@ fn parse_shdr_flags(phdr: &[u8]) -> Shdr_flags {
 impl SectionHeader{
   
     // Parse programheaders
-    fn parse(phdr: &[u8]) -> Result< SectionHeader > {
+    pub fn parse(shdr: &[u8]) -> Result< SectionHeader > {
         Ok(SectionHeader{
             name: String::from("hello"),
-            sh_type: parse_shdr_type(&phdr),
-            flags: parse_shdr_flags(&phdr),
-            
+            sh_type: parse_shdr_type(&shdr),
+            flags: parse_shdr_flags(&shdr),
+            addr: LittleEndian::read_u64(&shdr[0x10..0x18]),
+            offset: LittleEndian::read_u64(&shdr[0x18..0x20]),
+            size: LittleEndian::read_u64(&shdr[0x20..0x28]),
+            link: LittleEndian::read_u32(&shdr[0x28..0x2C]),
+            info: LittleEndian::read_u32(&shdr[0x2C..0x30]),
+            addralign: LittleEndian::read_u64(&shdr[0x30..0x38]),
+            entsize: LittleEndian::read_u64(&shdr[0x38..0x40]),
         })
     } 
 
