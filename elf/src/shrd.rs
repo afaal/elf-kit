@@ -47,11 +47,11 @@ enum Shdr_flags {
 }
 
 pub struct SectionHeader {
-    name: String,
+    pub name: String,
     sh_type: Shdr_type,
     flags: Shdr_flags,
     addr: u64,
-    offset: u64,
+    pub offset: u64,
     size: u64,
     link: u32,
     info: u32,
@@ -113,9 +113,9 @@ fn parse_shdr_flags(phdr: &[u8]) -> Shdr_flags {
 impl SectionHeader{
   
     // Parse programheaders
-    pub fn parse(shdr: &[u8]) -> Result< SectionHeader > {
+    pub fn parse(shdr: &[u8], name: &str) -> Result< SectionHeader > {
         Ok(SectionHeader{
-            name: String::from("hello"),
+            name: String::from(name),
             sh_type: parse_shdr_type(&shdr),
             flags: parse_shdr_flags(&shdr),
             addr: LittleEndian::read_u64(&shdr[0x10..0x18]),
