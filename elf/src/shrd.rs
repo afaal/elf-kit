@@ -139,7 +139,6 @@ impl SectionHeader{
     // should this come with/or without padding??? 
     pub fn to_le(&self) -> Vec<u8> {
         // bin.append([1,2,3].to_vec())
-        println!("dads");
         let mut bin = vec![]; 
 
         bin.extend_from_slice(&self.shstrndx_offset.to_le_bytes()); 

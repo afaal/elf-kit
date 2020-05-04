@@ -3,25 +3,29 @@ use crate::Result;
 
 use byteorder::*; 
 
+#[derive(Copy, Clone)]
 enum Phdr_type {
-    NULL,
-    LOAD,
-    DYNAMIC,
-    INTERP,
-    NOTE,
-    SHLIB,
-    PHDR,
-    TLS,
-    LOOS,
-    HIOS,
-    LOPROC,
-    HIPROC
+    NULL = 0x0,
+    LOAD = 0x1,
+    DYNAMIC = 0x2,
+    INTERP = 0x3,
+    NOTE = 0x4,
+    SHLIB = 0x5,
+    PHDR = 0x6,
+    TLS = 0x7,
+    LOOS = 0x60000000,
+    HIOS = 0x6FFFFFFF,
+    LOPROC = 0x70000000,
+    HIPROC = 0x7FFFFFFF,
+    // GNU options missing here 
+    // Currently we are dropping all foreign formats
+    // This might not be optimal.
 }
 
 pub struct ProgramHeader {
     p_type: Phdr_type,
     flags: u32,
-    offset: u64,
+    pub offset: u64,
     vaddr: u64,
     paddr: u64,
     filesz: u64,
@@ -29,10 +33,6 @@ pub struct ProgramHeader {
     p_flags: u64,
     p_align: u64
 }
-
-
-impl ProgramHeader {}
-
 
 impl ProgramHeader {
   
@@ -42,15 +42,40 @@ impl ProgramHeader {
             p_type: parse_phdr_type(&phdr),
             flags: LittleEndian::read_u32(&phdr[0x04..0x08]),
             offset: LittleEndian::read_u64(&phdr[0x8..0x10]),
-            vaddr: LittleEndian::read_u64(&phdr[0x8..0x10]),
-            paddr: LittleEndian::read_u64(&phdr[0x8..0x10]),
-            filesz: LittleEndian::read_u64(&phdr[0x8..0x10]),
-            memsz: LittleEndian::read_u64(&phdr[0x8..0x10]),
+            vaddr: LittleEndian::read_u64(&phdr[0x10..0x18]),
+            paddr: LittleEndian::read_u64(&phdr[0x18..0x20]),
+            filesz: LittleEndian::read_u64(&phdr[0x20..0x28]),
+            memsz: LittleEndian::read_u64(&phdr[0x28..0x30]),
             p_flags: 0,
-            p_align: LittleEndian::read_u64(&phdr[0x8..0x10]),
+            p_align: LittleEndian::read_u64(&phdr[0x30..0x38]),
         })
     } 
 
+    pub fn to_le(&self) -> Vec<u8> {
+        // bin.append([1,2,3].to_vec())
+        let mut bin = vec![]; 
+        
+        // do i end up owning this data, thus preventing me from using sh_type elsewhere? 
+        bin.extend_from_slice(&(self.p_type as u32).to_le_bytes()); 
+        bin.extend_from_slice(&self.flags.to_le_bytes()); 
+        bin.extend_from_slice(&self.offset.to_le_bytes()); 
+        bin.extend_from_slice(&self.vaddr.to_le_bytes()); 
+        bin.extend_from_slice(&self.paddr.to_le_bytes()); 
+        bin.extend_from_slice(&self.filesz.to_le_bytes()); 
+        bin.extend_from_slice(&self.memsz.to_le_bytes()); 
+        // bin.extend_from_slice(&self.p_flags.to_le_bytes()); used in 32-bit
+        bin.extend_from_slice(&self.p_align.to_le_bytes()); 
+        
+        ProgramHeader::add_padding(40, &mut bin);  
+        
+        return bin; 
+    }
+
+    fn add_padding(target_size: u32, bin: &mut Vec<u8>) {
+        while bin.len() < 40 {
+            bin.push(b'\0'); 
+        } 
+    }
 }
 
 
