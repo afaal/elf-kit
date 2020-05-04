@@ -19,7 +19,8 @@ trait Parseable<T> {
 
 #[derive(Debug, Clone)]
 pub enum ParsingError {
-    NotElf
+    NotElf,
+    ParsingError
 }
 
 type Result<T> = std::result::Result<T, ParsingError>; 
@@ -115,7 +116,6 @@ impl Parseable<Elf> for Elf {
         if !is_elf(&bin) {
             return Err(ParsingError::NotElf)
         }
- 
         
         let shstrndx = LittleEndian::read_u16(&bin[0x3E..0x40]); 
 
@@ -136,9 +136,19 @@ impl Parseable<Elf> for Elf {
 }
 
 impl Elf {
-    pub fn write(path: &str) -> Result<()> {
-        Ok(())
+    // return the elf as a binary file
+    pub fn as_bin(&self) -> Result<Vec<u8>> {
+        Ok(vec![1,2,3])
     }
+
+    pub fn write_file(&self, path: &str) -> Result<()> {
+        let bin = self.as_bin()?; 
+        
+        match fs::write(path, bin) {
+            Ok(res) => Ok(res),
+            Err(_) => return Err(ParsingError::ParsingError)
+        }
+    }    
 }
 
 

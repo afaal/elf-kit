@@ -4,50 +4,54 @@ use crate::Result;
 use byteorder::*; 
 
 
+#[repr(u32)]
+#[derive(Copy, Clone)]
 enum Shdr_type {
-    NULL,
-    PROGBITS,
-    SYMTAB,
-    STRTAB,
-    RELA,
-    HASH,
-    DYNAMIC,
-    NOTE,
-    NOBITS,
-    REL,
-    SHLIB,
-    DYNSYM,
-    INIT_ARRAY,
-    FINI_ARRAY,
-    PRE_INIT_ARRAY,
-    GROUP,
-    SYMTAB_SHNDX,
-    NUM,
-    LOOS,
+    NULL = 0x0,
+    PROGBITS = 0x1,
+    SYMTAB = 0x2,
+    STRTAB = 0x3,
+    RELA = 0x4,
+    HASH = 0x5,
+    DYNAMIC = 0x6,
+    NOTE = 0x7,
+    NOBITS = 0x8,
+    REL = 0x9,
+    SHLIB = 0x0A,
+    DYNSYM = 0x0B,
+    INIT_ARRAY = 0x0E,
+    FINI_ARRAY = 0x0F,
+    PRE_INIT_ARRAY = 0x10,
+    GROUP = 0x11,
+    SYMTAB_SHNDX = 0x12,
+    NUM = 0x13,
+    LOOS = 0x60000000,
     GNU_VERDEF,
     GNU_VERNEED,
     GNU_VERSYM,
 }
-
+#[repr(u64)]
+#[derive(Copy, Clone)]
 enum Shdr_flags {
-    WRITE,
-    ALLOC,
-    EXECINSTR,
-    MERGE,
-    STRINGS,
-    INFO_LINK,
-    LINK_ORDER,
-    OS_NONCONFORMING,
-    GROUP,
-    TLS,
-    MASKOS,
-    MASKPROC,
-    ORDERED,
-    EXCLUDE
+    NONE = 0x0,
+    WRITE = 0x1,
+    ALLOC = 0x2,
+    EXECINSTR = 0x4,
+    MERGE = 0x10,
+    STRINGS = 0x20,
+    INFO_LINK = 0x40,
+    LINK_ORDER = 0x80,
+    OS_NONCONFORMING = 0x100,
+    GROUP = 0x200,
+    TLS = 0x400,
+    MASKOS = 0x0ff00000,
+    MASKPROC = 0xf0000000,
+    ORDERED = 0x4000000,
+    EXCLUDE = 0x8000000
 }
-
 pub struct SectionHeader {
     pub name: String,
+    shstrndx_offset: u32,
     sh_type: Shdr_type,
     flags: Shdr_flags,
     addr: u64,
@@ -90,6 +94,7 @@ fn parse_shdr_type(phdr: &[u8]) -> Shdr_type {
 
 fn parse_shdr_flags(phdr: &[u8]) -> Shdr_flags {
     return match LittleEndian::read_u32(&phdr[0x08..0x10]) {
+        0x0 => return Shdr_flags::NONE,
         0x1 => return Shdr_flags::WRITE,
         0x2 => return Shdr_flags::ALLOC,
         0x4 => return Shdr_flags::EXECINSTR,
@@ -106,7 +111,7 @@ fn parse_shdr_flags(phdr: &[u8]) -> Shdr_flags {
         0x8000000 => return Shdr_flags::EXCLUDE,
 
         // TODO: Throw error here instead -> and return Result
-        _ => return Shdr_flags::ALLOC
+        _ => return Shdr_flags::NONE
     }
 }
 
@@ -116,6 +121,7 @@ impl SectionHeader{
     pub fn parse(shdr: &[u8], name: &str) -> Result< SectionHeader > {
         Ok(SectionHeader{
             name: String::from(name),
+            shstrndx_offset: LittleEndian::read_u32(&shdr[0x0..0x4]),
             sh_type: parse_shdr_type(&shdr),
             flags: parse_shdr_flags(&shdr),
             addr: LittleEndian::read_u64(&shdr[0x10..0x18]),
@@ -126,6 +132,38 @@ impl SectionHeader{
             addralign: LittleEndian::read_u64(&shdr[0x30..0x38]),
             entsize: LittleEndian::read_u64(&shdr[0x38..0x40]),
         })
-    } 
+    }
+    
+    
+    // print the section header as a LittleEndian formatted object
+    // should this come with/or without padding??? 
+    pub fn to_le(&self) -> Vec<u8> {
+        // bin.append([1,2,3].to_vec())
+        println!("dads");
+        let mut bin = vec![]; 
+
+        bin.extend_from_slice(&self.shstrndx_offset.to_le_bytes()); 
+        
+        // do i end up owning this data, thus preventing me from using sh_type elsewhere? 
+        bin.extend_from_slice(&(self.sh_type as u32).to_le_bytes()); 
+        bin.extend_from_slice(&(self.flags as u64).to_le_bytes()); 
+        bin.extend_from_slice(&self.addr.to_le_bytes()); 
+        bin.extend_from_slice(&self.offset.to_le_bytes()); 
+        bin.extend_from_slice(&self.size.to_le_bytes()); 
+        bin.extend_from_slice(&self.link.to_le_bytes()); 
+        bin.extend_from_slice(&self.info.to_le_bytes()); 
+        bin.extend_from_slice(&self.addralign.to_le_bytes()); 
+        bin.extend_from_slice(&self.entsize.to_le_bytes()); 
+        
+        SectionHeader::add_padding(40, &mut bin);  
+        
+        return bin; 
+    }
+
+    fn add_padding(target_size: u32, bin: &mut Vec<u8>) {
+        while bin.len() < 40 {
+            bin.push(b'\0'); 
+        } 
+    }
 
 }
