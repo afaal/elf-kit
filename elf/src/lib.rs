@@ -6,6 +6,7 @@ use std::fmt;
 use std::io::Cursor; 
 use byteorder::*; 
 use std::slice::SliceIndex; 
+use std::convert::TryInto; 
 
 pub mod phdr; 
 pub mod shrd; 
@@ -108,7 +109,7 @@ pub struct Elf {
     ei_version: u8, 
     e_abi: Elf_abi,
     e_abi_version: u8,
-    e_padding: u8,
+    e_padding: [u8;7],
     pub e_type: Elf_type,
     e_arch: Elf_arch,
     e_version: u32,
@@ -141,28 +142,27 @@ impl Elf {
         bin.extend_from_slice(&self.ei_version.to_le_bytes()); 
         bin.extend_from_slice(&(self.e_abi as u8).to_le_bytes()); 
         bin.extend_from_slice(&[self.e_abi_version]);
-        bin.extend_from_slice(&[self.e_padding]);
-        bin.extend_from_slice(&(self.e_type as u32).to_le_bytes()); 
-        bin.extend_from_slice(&(self.e_arch as u32).to_le_bytes()); 
+        bin.extend_from_slice(&self.e_padding);
+        bin.extend_from_slice(&(self.e_type as u16).to_le_bytes()); 
+        bin.extend_from_slice(&(self.e_arch as u16).to_le_bytes()); 
         bin.extend_from_slice(&self.e_version.to_le_bytes()); 
         bin.extend_from_slice(&self.e_entry.to_le_bytes()); 
-        bin.extend_from_slice(&self.phdr_offset.to_be_bytes()); 
-        bin.extend_from_slice(&self.shdr_offset.to_be_bytes()); 
-        bin.extend_from_slice(&self.e_flags.to_be_bytes()); 
-        bin.extend_from_slice(&self.e_flags.to_be_bytes()); 
-        bin.extend_from_slice(&self.size.to_be_bytes()); 
-        bin.extend_from_slice(&self.phdr_size.to_be_bytes()); 
-        bin.extend_from_slice(&self.phdr_num.to_be_bytes()); 
-        bin.extend_from_slice(&self.shdr_size.to_be_bytes()); 
-        bin.extend_from_slice(&self.shdr_num.to_be_bytes()); 
-        bin.extend_from_slice(&self.shstrndx.to_be_bytes()); 
+        bin.extend_from_slice(&self.phdr_offset.to_le_bytes()); 
+        bin.extend_from_slice(&self.shdr_offset.to_le_bytes()); 
+        bin.extend_from_slice(&self.e_flags.to_le_bytes()); 
+        bin.extend_from_slice(&self.size.to_le_bytes()); 
+        bin.extend_from_slice(&self.phdr_size.to_le_bytes()); 
+        bin.extend_from_slice(&self.phdr_num.to_le_bytes()); 
+        bin.extend_from_slice(&self.shdr_size.to_le_bytes()); 
+        bin.extend_from_slice(&self.shdr_num.to_le_bytes()); 
+        bin.extend_from_slice(&self.shstrndx.to_le_bytes()); 
 
         //TODO: ADD necesarry padding
         
         // Add program headers        
-        for phdr in &self.program_hdrs {
-            bin.extend(phdr.to_le()); 
-        }
+        // for phdr in &self.program_hdrs {
+        //     bin.extend(phdr.to_le()); 
+        // }
 
         //TODO: ADD necesarry padding
 
@@ -171,9 +171,9 @@ impl Elf {
         //TODO: ADD necesarry padding
 
         // Add section headers
-        for shdr in &self.section_hdrs {
-            bin.extend(shdr.to_le()); 
-        }
+        // for shdr in &self.section_hdrs {
+        //     bin.extend(shdr.to_le()); 
+        // }
       
         
         return bin;
@@ -187,6 +187,9 @@ impl Elf {
             Err(_) => return Err(ParsingError::ParsingError)
         }
     }    
+}
+fn pad(size: u32) -> Vec<u8> {
+    return vec![0; size as usize]; 
 }
 
 impl Parseable<Elf> for Elf {
@@ -204,13 +207,13 @@ impl Parseable<Elf> for Elf {
             e_class:        parse_class(&bin),
             ei_version:     bin[0x06],
             e_abi_version:  bin[0x08],
-            e_padding:      bin[0x09],
+            e_padding:      [bin[0x9],bin[0xA],bin[0xB],bin[0xC],bin[0xD],bin[0xE],bin[0xF]],
             e_abi:          parse_abi(&bin),
             e_version:      LittleEndian::read_u32(&bin[0x14..0x18]),
             e_arch:         parse_arch(&bin),
             e_type:         parse_type(&bin),
             e_entry:        parse_entry64(&bin),
-            e_flags:        0x100,
+            e_flags:        LittleEndian::read_u32(&bin[0x30..0x34]),
             size:           LittleEndian::read_u16(&bin[0x34..0x36]),
             phdr_offset:    LittleEndian::read_u64(&bin[0x20..0x28]), 
             phdr_size:      LittleEndian::read_u16(&bin[0x36..0x38]), 
@@ -312,6 +315,8 @@ pub fn str_from_u8_nul_utf8(utf8_src: &[u8]) -> Result<&str> {
 }
 
 fn parse_arch(bin: &Vec<u8>) -> Elf_arch {
+    println!("MACHINE: {:x}", LittleEndian::read_u16(&bin[0x12..0x14]));
+
     return match LittleEndian::read_u16(&bin[0x12..0x14]) {
         0x0 => return Elf_arch::NONE,
         0x2 => return Elf_arch::SPARC,
