@@ -38,76 +38,155 @@ impl error::Error for ParsingError {
         None
     }
 }
+#[derive(Copy, Clone)]
 pub enum Elf_type {
-    NONE,
-    REL,
-    EXEC,
-    DYN,
-    CORE,
-    LOOS,
-    HIOS,
-    LOPROC,
-    HIPROC
+    NONE = 0x0,
+    REL = 0x1,
+    EXEC = 0x2,
+    DYN = 0x3,
+    CORE = 0x4,
+    LOOS = 0xfe00,
+    HIOS = 0xfeff,
+    LOPROC = 0xff00,
+    HIPROC = 0xffff
 }
 
+#[derive(Copy, Clone)]
 pub enum Elf_class {
-    ELF64,
-    ELF32
+    ELF32 = 1,
+    ELF64 = 2
 }
 
+#[derive(Copy, Clone)]
 pub enum Elf_endiannes {
-    LittleEndian, 
-    BigEndian
+    LittleEndian = 1, 
+    BigEndian = 2
 }
 
+#[derive(Copy, Clone)]
 pub enum Elf_arch {
-    NONE,
-    SPARC,
-    X86,
-    MIPS,
-    POWERPC,
-    S390,
-    ARM,
-    SUPERH,
-    IA64,
-    AMD64,
-    AARCH64,
-    RISCV
+    NONE    = 0x0,
+    SPARC   = 0x2,
+    X86     = 0x3,
+    MIPS    = 0x8,
+    POWERPC = 0x14,
+    S390    = 0x16,
+    ARM     = 0x28,
+    SUPERH   = 0x2A,
+    IA64     = 0x32,
+    AMD64    = 0x3E,
+    AARCH64  = 0xB7,
+    RISCV    = 0xF3
 }
 
+#[derive(Copy, Clone)]
 pub enum Elf_abi {
-    NONE,
-    HPUX,
-    NetBSD,
-    Linux,
-    GNUHurd,
-    Solaris,
-    AIX,
-    IRIX,
-    FreeBSD,
-    Tru64,
-    NovellModesto,
-    OpenBSD,
-    OpenVMS,
-    NonStopKernel,
-    AROS,
-    FenixOS,
-    CloudABI,
-    OpenVOS
+    NONE    = 0x0,
+    HPUX    = 0x1,
+    NetBSD  = 0x2,
+    Linux   = 0x3,
+    GNUHurd = 0x4,
+    Solaris = 0x6,
+    AIX     = 0x7,
+    IRIX    = 0x8,
+    FreeBSD = 0x9,
+    Tru64   = 0xA,
+    NovellModesto = 0xB,
+    OpenBSD = 0xC,
+    OpenVMS = 0xD,
+    NonStopKernel = 0xE,
+    AROS    = 0xF,
+    FenixOS = 0x10,
+    CloudABI = 0x11,
+    OpenVOS = 0x12
 }
 
 pub struct Elf {
-    e_ident: String,
-    pub e_type: Elf_type,
-    e_abi: Elf_abi,
-    e_arch: Elf_arch,
+    e_ident: [u8;4],
+    e_class: Elf_class, 
     e_endianness: Elf_endiannes,
-    e_version: Elf_class, 
+    ei_version: u8, 
+    e_abi: Elf_abi,
+    e_abi_version: u8,
+    e_padding: u8,
+    pub e_type: Elf_type,
+    e_arch: Elf_arch,
+    e_version: u32,
     e_entry: u64,
     e_flags: u32, 
+    size: u16,
+    phdr_offset: u64,
+    phdr_size: u16,
+    phdr_num: u16,
+    shdr_offset: u64,
+    shdr_size: u16,
+    shdr_num: u16,
     pub program_hdrs: Vec<phdr::ProgramHeader>,
     pub section_hdrs: Vec<shrd::SectionHeader>,
     shstrndx: u16
+}
+
+impl Elf {
+    // return the elf as a binary file
+    pub fn to_le(&self) -> Vec<u8> {
+        // bin.append([1,2,3].to_vec())
+        let mut bin = vec![]; 
+
+        // do i end up owning this data, thus preventing me from using sh_type elsewhere? 
+        // bin.extend_from_slice(&(self.p_type as u32).to_le_bytes()); 
+        // ASSEMBLE THE ELF HEADER
+        bin.extend_from_slice(&self.e_ident);  
+        bin.extend_from_slice(&(self.e_class as u8).to_le_bytes()); 
+        bin.extend_from_slice(&(self.e_endianness as u8).to_le_bytes()); 
+        bin.extend_from_slice(&self.ei_version.to_le_bytes()); 
+        bin.extend_from_slice(&(self.e_abi as u8).to_le_bytes()); 
+        bin.extend_from_slice(&[self.e_abi_version]);
+        bin.extend_from_slice(&[self.e_padding]);
+        bin.extend_from_slice(&(self.e_type as u32).to_le_bytes()); 
+        bin.extend_from_slice(&(self.e_arch as u32).to_le_bytes()); 
+        bin.extend_from_slice(&self.e_version.to_le_bytes()); 
+        bin.extend_from_slice(&self.e_entry.to_le_bytes()); 
+        bin.extend_from_slice(&self.phdr_offset.to_be_bytes()); 
+        bin.extend_from_slice(&self.shdr_offset.to_be_bytes()); 
+        bin.extend_from_slice(&self.e_flags.to_be_bytes()); 
+        bin.extend_from_slice(&self.e_flags.to_be_bytes()); 
+        bin.extend_from_slice(&self.size.to_be_bytes()); 
+        bin.extend_from_slice(&self.phdr_size.to_be_bytes()); 
+        bin.extend_from_slice(&self.phdr_num.to_be_bytes()); 
+        bin.extend_from_slice(&self.shdr_size.to_be_bytes()); 
+        bin.extend_from_slice(&self.shdr_num.to_be_bytes()); 
+        bin.extend_from_slice(&self.shstrndx.to_be_bytes()); 
+
+        //TODO: ADD necesarry padding
+        
+        // Add program headers        
+        for phdr in &self.program_hdrs {
+            bin.extend(phdr.to_le()); 
+        }
+
+        //TODO: ADD necesarry padding
+
+        // <<< Binary SEGMENTS GOES HERE 
+
+        //TODO: ADD necesarry padding
+
+        // Add section headers
+        for shdr in &self.section_hdrs {
+            bin.extend(shdr.to_le()); 
+        }
+      
+        
+        return bin;
+    }
+
+    pub fn write_file(&self, path: &str) -> Result<()> {
+        let bin = self.to_le(); 
+        
+        match fs::write(path, bin) {
+            Ok(res) => Ok(res),
+            Err(_) => return Err(ParsingError::ParsingError)
+        }
+    }    
 }
 
 impl Parseable<Elf> for Elf {
@@ -120,35 +199,30 @@ impl Parseable<Elf> for Elf {
         let shstrndx = LittleEndian::read_u16(&bin[0x3E..0x40]); 
 
         return Ok(Elf{
-            e_ident:        String::from("ELF"),
+            e_ident:        [0x7F, 0x45, 0x4C, 0x46],
             e_endianness:   parse_endianness(&bin),
-            e_version:      parse_class(&bin),
+            e_class:        parse_class(&bin),
+            ei_version:     bin[0x06],
+            e_abi_version:  bin[0x08],
+            e_padding:      bin[0x09],
             e_abi:          parse_abi(&bin),
+            e_version:      LittleEndian::read_u32(&bin[0x14..0x18]),
             e_arch:         parse_arch(&bin),
             e_type:         parse_type(&bin),
             e_entry:        parse_entry64(&bin),
             e_flags:        0x100,
+            size:           LittleEndian::read_u16(&bin[0x34..0x36]),
+            phdr_offset:    LittleEndian::read_u64(&bin[0x20..0x28]), 
+            phdr_size:      LittleEndian::read_u16(&bin[0x36..0x38]), 
+            phdr_num:       LittleEndian::read_u16(&bin[0x38..0x3A]),
+            shdr_offset:    LittleEndian::read_u64(&bin[0x28..0x30]), 
+            shdr_size:      LittleEndian::read_u16(&bin[0x3A..0x3C]), 
+            shdr_num:       LittleEndian::read_u16(&bin[0x3C..0x3E]),
             program_hdrs:   parse_program_header(&bin)?,
             section_hdrs:   parse_section_header(&bin, shstrndx)?,
             shstrndx,
         });   
     }
-}
-
-impl Elf {
-    // return the elf as a binary file
-    pub fn as_bin(&self) -> Result<Vec<u8>> {
-        Ok(vec![1,2,3])
-    }
-
-    pub fn write_file(&self, path: &str) -> Result<()> {
-        let bin = self.as_bin()?; 
-        
-        match fs::write(path, bin) {
-            Ok(res) => Ok(res),
-            Err(_) => return Err(ParsingError::ParsingError)
-        }
-    }    
 }
 
 
