@@ -157,6 +157,13 @@ impl Elf {
         bin.extend_from_slice(&self.shdr_num.to_le_bytes()); 
         bin.extend_from_slice(&self.shstrndx.to_le_bytes()); 
 
+        // TODO: All ofsets should be calculated dynamically when recreating the
+        // binary this is to accomodate changes made after parsing.
+        // Offsets to change: 
+        //  - ELF header (phdr, shdr, strhrdndx)
+        //  - Program Header (offset, vaddr, paddr, filesz, memsz, p_align)
+        //  - Section Header (shstrndx, addr, addralign, offset, size)
+
         //TODO: ADD necesarry padding
         
         // Add program headers        
@@ -188,6 +195,7 @@ impl Elf {
         }
     }    
 }
+
 fn pad(size: u32) -> Vec<u8> {
     return vec![0; size as usize]; 
 }
@@ -198,6 +206,8 @@ impl Parseable<Elf> for Elf {
         if !is_elf(&bin) {
             return Err(ParsingError::NotElf)
         }
+
+        // TODO: ADD lengths checks to ensure it is an ELF of prober length
         
         let shstrndx = LittleEndian::read_u16(&bin[0x3E..0x40]); 
 
