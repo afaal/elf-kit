@@ -9,10 +9,14 @@ use std::slice::SliceIndex;
 use std::convert::TryInto; 
 
 pub mod phdr; 
-pub mod shrd; 
+pub mod shdr; 
+pub mod segment; 
+pub mod section; 
 
 use phdr::ProgramHeader; 
-use shrd::SectionHeader; 
+use shdr::SectionHeader; 
+use segment::Segment;
+use section::Section;
 
 trait Parseable<T> {  
     fn parse(bin: &Vec<u8>) -> Result<T>;
@@ -123,7 +127,9 @@ pub struct Elf {
     shdr_size: u16,
     shdr_num: u16,
     pub program_hdrs: Vec<phdr::ProgramHeader>,
-    pub section_hdrs: Vec<shrd::SectionHeader>,
+    pub section_hdrs: Vec<shdr::SectionHeader>,
+    segments: Vec<Segment>,
+    sections: Vec<Section>,
     shstrndx: u16
 }
 
@@ -164,24 +170,30 @@ impl Elf {
         //  - Program Header (offset, vaddr, paddr, filesz, memsz, p_align)
         //  - Section Header (shstrndx, addr, addralign, offset, size)
 
-        //TODO: ADD necesarry padding
+        // TODO: ADD necesarry padding to program header offset.
         
-        // Add program headers        
-        // for phdr in &self.program_hdrs {
-        //     bin.extend(phdr.to_le()); 
-        // }
+        // Add program headers at the program offset    
+        for phdr in &self.program_hdrs {
+            println!("[segment] offset: {:x} | size: {:x} ", phdr.offset, phdr.filesz); 
 
-        //TODO: ADD necesarry padding
+            bin.extend(phdr.to_le()); 
+        }
+
+        // TODO: ADD necesarry padding
 
         // <<< Binary SEGMENTS GOES HERE 
+        for segment in &self.segments {
+            println!("[adding segment] offset: {:x} | size: {:x} ", bin.len(), segment.content.len()); 
+            bin.extend(&segment.content); 
+        }
 
-        //TODO: ADD necesarry padding
+        // TODO: ADD necesarry padding
 
         // Add section headers
-        // for shdr in &self.section_hdrs {
-        //     bin.extend(shdr.to_le()); 
-        // }
-      
+        for shdr in &self.section_hdrs {
+
+            bin.extend(shdr.to_le()); 
+        }
         
         return bin;
     }
@@ -200,6 +212,26 @@ fn pad(size: u32) -> Vec<u8> {
     return vec![0; size as usize]; 
 }
 
+fn parse_segments(bin: &Vec<u8>, phdr: &Vec<ProgramHeader>) -> Vec<Segment> {
+    let mut segments = vec![]; 
+
+    for hdr in phdr {
+        segments.push( Segment::from(&bin[hdr.offset as usize..(hdr.offset+hdr.filesz) as usize]))     
+    }
+
+    return segments; 
+}
+
+fn parse_sections(bin: &Vec<u8>, shdr: &Vec<SectionHeader>) -> Vec<Section> {
+    let mut sections = vec![]; 
+
+    for hdr in shdr {
+        sections.push( Section::from(&bin[hdr.offset as usize..(hdr.offset+hdr.size) as usize]))     
+    }
+
+    return sections; 
+}
+
 impl Parseable<Elf> for Elf {
     fn parse(bin: &Vec<u8>) -> Result<Elf> {
         
@@ -210,7 +242,19 @@ impl Parseable<Elf> for Elf {
         // TODO: ADD lengths checks to ensure it is an ELF of prober length
         
         let shstrndx = LittleEndian::read_u16(&bin[0x3E..0x40]); 
-
+        let e_flags = LittleEndian::read_u32(&bin[0x30..0x34]);
+        let size = LittleEndian::read_u16(&bin[0x34..0x36]);
+        let phdr_offset = LittleEndian::read_u64(&bin[0x20..0x28]);
+        let phdr_size = LittleEndian::read_u16(&bin[0x36..0x38]);
+        let phdr_num = LittleEndian::read_u16(&bin[0x38..0x3A]);
+        let shdr_offset = LittleEndian::read_u64(&bin[0x28..0x30]);
+        let shdr_size = LittleEndian::read_u16(&bin[0x3A..0x3C]);
+        let shdr_num = LittleEndian::read_u16(&bin[0x3C..0x3E]);
+        let program_hdrs = parse_program_header(&bin)?;
+        let section_hdrs = parse_section_header(&bin, shstrndx)?;
+        let segments = parse_segments(bin, &program_hdrs); 
+        let sections = parse_sections(bin,&section_hdrs); 
+        
         return Ok(Elf{
             e_ident:        [0x7F, 0x45, 0x4C, 0x46],
             e_endianness:   parse_endianness(&bin),
@@ -223,17 +267,20 @@ impl Parseable<Elf> for Elf {
             e_arch:         parse_arch(&bin),
             e_type:         parse_type(&bin),
             e_entry:        parse_entry64(&bin),
-            e_flags:        LittleEndian::read_u32(&bin[0x30..0x34]),
-            size:           LittleEndian::read_u16(&bin[0x34..0x36]),
-            phdr_offset:    LittleEndian::read_u64(&bin[0x20..0x28]), 
-            phdr_size:      LittleEndian::read_u16(&bin[0x36..0x38]), 
-            phdr_num:       LittleEndian::read_u16(&bin[0x38..0x3A]),
-            shdr_offset:    LittleEndian::read_u64(&bin[0x28..0x30]), 
-            shdr_size:      LittleEndian::read_u16(&bin[0x3A..0x3C]), 
-            shdr_num:       LittleEndian::read_u16(&bin[0x3C..0x3E]),
-            program_hdrs:   parse_program_header(&bin)?,
-            section_hdrs:   parse_section_header(&bin, shstrndx)?,
+            e_flags,
+            size,
+            phdr_offset,
+            phdr_size,
+            phdr_num,
+            shdr_offset,
+            shdr_size,
+            shdr_num,
+            program_hdrs,
+            section_hdrs,
             shstrndx,
+            segments,
+            sections
+            // Add sections to           
         });   
     }
 }
@@ -325,8 +372,6 @@ pub fn str_from_u8_nul_utf8(utf8_src: &[u8]) -> Result<&str> {
 }
 
 fn parse_arch(bin: &Vec<u8>) -> Elf_arch {
-    println!("MACHINE: {:x}", LittleEndian::read_u16(&bin[0x12..0x14]));
-
     return match LittleEndian::read_u16(&bin[0x12..0x14]) {
         0x0 => return Elf_arch::NONE,
         0x2 => return Elf_arch::SPARC,

@@ -28,7 +28,7 @@ pub struct ProgramHeader {
     pub offset: u64,
     vaddr: u64,
     paddr: u64,
-    filesz: u64,
+    pub filesz: u64,
     memsz: u64,
     p_flags: u64,
     p_align: u64
@@ -66,7 +66,7 @@ impl ProgramHeader {
         // bin.extend_from_slice(&self.p_flags.to_le_bytes()); used in 32-bit
         bin.extend_from_slice(&self.p_align.to_le_bytes()); 
         
-        ProgramHeader::add_padding(40, &mut bin);  
+        // ProgramHeader::add_padding(40, &mut bin);  
         
         return bin; 
     }

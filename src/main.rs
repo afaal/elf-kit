@@ -8,6 +8,7 @@ fn main() {
     println!("#phdrs: {}", bin.program_hdrs.len()); 
     println!("#shdrs: {}", bin.section_hdrs.len()); 
 
-    println!("{:02x?}", &bin.to_le()); 
-    // bin.write_file("./test/testBin.test"); 
+    // println!("{:02x?}", &bin.to_le()); 
+
+    bin.write_file("./test/testBin.test"); 
 }

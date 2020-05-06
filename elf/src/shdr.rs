@@ -56,7 +56,7 @@ pub struct SectionHeader {
     flags: Shdr_flags,
     addr: u64,
     pub offset: u64,
-    size: u64,
+    pub size: u64,
     link: u32,
     info: u32,
     addralign: u64,
