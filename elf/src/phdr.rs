@@ -96,3 +96,21 @@ fn parse_phdr_type(phdr: &[u8]) -> Phdr_type {
         _ => Phdr_type::NULL
     }
 }
+
+
+pub fn parse_program_header(bin: &Vec<u8>) -> Result<Vec<ProgramHeader>> {
+    let phdr_offset = LittleEndian::read_u64(&bin[0x20..0x28]); 
+    let phdr_size = LittleEndian::read_u16(&bin[0x36..0x38]); 
+    let phdr_num = LittleEndian::read_u16(&bin[0x38..0x3A]);
+    
+    let mut phdrs:Vec<ProgramHeader> = vec![]; 
+
+    // loop through all programheaders
+    for i in 0..phdr_num {
+        let start = (phdr_offset+(phdr_size as u64*i as u64) ) as usize; 
+        let end = (phdr_offset+(phdr_size as u64*i as u64)+phdr_size as u64 ) as usize; 
+        phdrs.push(ProgramHeader::parse(&bin[start..end])?)
+    }
+
+    return Ok(phdrs);
+}

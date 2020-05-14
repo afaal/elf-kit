@@ -166,3 +166,40 @@ impl SectionHeader{
     }
 
 }
+
+
+pub fn parse_section_header(bin: &Vec<u8>, shstrndx: u16) -> Result<Vec<SectionHeader>> {
+    let shdr_offset = LittleEndian::read_u64(&bin[0x28..0x30]); 
+    let shdr_size = LittleEndian::read_u16(&bin[0x3A..0x3C]); 
+    let shdr_num = LittleEndian::read_u16(&bin[0x3C..0x3E]); 
+    let shstr_table_offset: usize = (shdr_offset + (shdr_size * shstrndx) as u64 ) as usize;
+    let str_table_offset = LittleEndian::read_u64(&bin[shstr_table_offset+0x18..shstr_table_offset+0x20]) as usize;
+    let str_table_size = LittleEndian::read_u64(&bin[shstr_table_offset+0x20..shstr_table_offset+0x28]) as usize; 
+
+    let mut shdrs:Vec<SectionHeader> = vec![]; 
+
+    // loop through all section headers
+    for i in 0..shdr_num {
+        let start = (shdr_offset+(shdr_size as u64*i as u64) ) as usize; 
+        let end = (shdr_offset+(shdr_size as u64*i as u64)+shdr_size as u64 ) as usize; 
+        let name_offset = str_table_offset + LittleEndian::read_u32(&bin[start..start+0x4]) as usize; 
+        
+        let name = str_from_u8_nul_utf8(&bin[name_offset..str_table_offset+str_table_size])?;
+        let section = SectionHeader::parse(&bin[start..end], name)?; 
+        // println!("{}", String::from_utf8_lossy(&bin[name_offset..name_offset+0x4])); 
+        // add the section to the table of sections 
+        shdrs.push(section); 
+    }
+
+    // loop through them again populating their names
+    // we do this because we haven't mapped the shstrndx yet. 
+    return Ok(shdrs); 
+} 
+
+
+pub fn str_from_u8_nul_utf8(utf8_src: &[u8]) -> Result<&str> {
+    let nul_range_end = utf8_src.iter()
+        .position(|&c| c == b'\0')
+        .unwrap_or(utf8_src.len()); // default to length if no `\0` present
+    return Ok(::std::str::from_utf8(&utf8_src[0..nul_range_end]).unwrap())
+}
