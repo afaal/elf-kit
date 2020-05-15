@@ -13,8 +13,6 @@ pub mod shdr;
 pub mod segment; 
 pub mod section; 
 
-use phdr::ProgramHeader; 
-use shdr::SectionHeader; 
 use segment::Segment;
 use section::Section;
 
@@ -126,10 +124,9 @@ pub struct Elf {
     shdr_offset: u64,
     shdr_size: u16,
     shdr_num: u16,
-    pub program_hdrs: Vec<phdr::ProgramHeader>,
-    pub section_hdrs: Vec<shdr::SectionHeader>,
+    // pub program_hdrs: Vec<phdr::ProgramHeader>,
+    // pub section_hdrs: Vec<shdr::SectionHeader>,
     segments: Vec<Segment>,
-    sections: Vec<Section>,
     shstrndx: u16
 }
 
@@ -173,27 +170,22 @@ impl Elf {
         // TODO: ADD necesarry padding to program header offset.
         
         // Add program headers at the program offset    
-        for phdr in &self.program_hdrs {
-            println!("[segment] offset: {:x} | size: {:x} ", phdr.offset, phdr.filesz); 
+        
 
-            bin.extend(phdr.to_le()); 
-        }
-
-        // TODO: ADD necesarry padding
+        // TODO: ADD necesarry padding using align
 
         // <<< Binary SEGMENTS GOES HERE 
         for segment in &self.segments {
-            println!("[adding segment] offset: {:x} | size: {:x} ", bin.len(), segment.content.len()); 
-            bin.extend(&segment.content); 
+            println!("[adding segment] offset: {:x} | size: {:x} ", bin.len(), segment.raw_content.len()); 
+            bin.extend(&segment.raw_content); 
         }
 
-        // TODO: ADD necesarry padding
+        // TODO: ADD necesarry padding using align
 
-        // Add section headers
-        for shdr in &self.section_hdrs {
 
-            bin.extend(shdr.to_le()); 
-        }
+
+        // <<< SECTIONS HEADERS GOES HERE
+        
         
         return bin;
     }
@@ -212,25 +204,7 @@ fn pad(size: u32) -> Vec<u8> {
     return vec![0; size as usize]; 
 }
 
-fn parse_segments(bin: &Vec<u8>, phdr: &Vec<ProgramHeader>) -> Vec<Segment> {
-    let mut segments = vec![]; 
 
-    for hdr in phdr {
-        segments.push( Segment::from(&bin[hdr.offset as usize..(hdr.offset+hdr.filesz) as usize]))     
-    }
-
-    return segments; 
-}
-
-fn parse_sections(bin: &Vec<u8>, shdr: &Vec<SectionHeader>) -> Vec<Section> {
-    let mut sections = vec![]; 
-
-    for hdr in shdr {
-        sections.push( Section::from(&bin[hdr.offset as usize..(hdr.offset+hdr.size) as usize]))     
-    }
-
-    return sections; 
-}
 
 impl Parseable<Elf> for Elf {
     fn parse(bin: &Vec<u8>) -> Result<Elf> {
@@ -250,10 +224,9 @@ impl Parseable<Elf> for Elf {
         let shdr_offset = LittleEndian::read_u64(&bin[0x28..0x30]);
         let shdr_size = LittleEndian::read_u16(&bin[0x3A..0x3C]);
         let shdr_num = LittleEndian::read_u16(&bin[0x3C..0x3E]);
-        let program_hdrs = phdr::parse_program_header(&bin)?;
         let section_hdrs = shdr::parse_section_header(&bin, shstrndx)?;
-        let segments = parse_segments(bin, &program_hdrs); 
-        let sections = parse_sections(bin,&section_hdrs); 
+        let segments = segment::parse_segments(bin)?; 
+        let sections = section::parse_sections(bin,&section_hdrs); 
         
         return Ok(Elf{
             e_ident:        [0x7F, 0x45, 0x4C, 0x46],
@@ -275,11 +248,8 @@ impl Parseable<Elf> for Elf {
             shdr_offset,
             shdr_size,
             shdr_num,
-            program_hdrs,
-            section_hdrs,
             shstrndx,
             segments,
-            sections
             // Add sections to           
         });   
     }
