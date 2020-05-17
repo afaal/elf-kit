@@ -13,7 +13,7 @@ pub struct Segment {
 }
 
 impl Segment {
-    pub fn from(phdr: ProgramHeader, bin: &[u8], shdrs: &Vec<Section>, offset: usize) -> Segment {
+    pub fn from(bin: &[u8],phdr: ProgramHeader, shdrs: &Vec<Section>, offset: usize) -> Segment {
         
         let sections  = vec![]; 
 
@@ -39,11 +39,10 @@ pub fn parse_segments(bin: &Vec<u8>) -> crate::Result<Vec<Segment>> {
     // use the program headers to parse the file 
     
     for hdr in program_hdrs {
-    
         segments.push(
             Segment::from(
+                &bin[hdr.offset as usize..(&hdr.offset+&hdr.filesz) as usize],
                 hdr,
-                &bin[hdr.offset as usize..(hdr.offset+hdr.filesz) as usize],
                 &sections,
                 0)
             )

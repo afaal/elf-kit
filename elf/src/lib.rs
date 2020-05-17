@@ -226,7 +226,7 @@ impl Parseable<Elf> for Elf {
         let shdr_num = LittleEndian::read_u16(&bin[0x3C..0x3E]);
         let section_hdrs = shdr::parse_section_header(&bin, shstrndx)?;
         let segments = segment::parse_segments(bin)?; 
-        let sections = section::parse_sections(bin,&section_hdrs); 
+        // let sections = section::parse_sections(bin,&section_hdrs); 
         
         return Ok(Elf{
             e_ident:        [0x7F, 0x45, 0x4C, 0x46],
