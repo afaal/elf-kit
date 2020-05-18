@@ -17,7 +17,7 @@ use segment::Segment;
 use section::Section;
 
 trait Parseable<T> {  
-    fn parse(bin: &Vec<u8>) -> Result<T>;
+    fn parse(bin: Vec<u8>) -> Result<T>;
 }
 
 #[derive(Debug, Clone)]
@@ -207,14 +207,24 @@ fn pad(size: u32) -> Vec<u8> {
 
 
 impl Parseable<Elf> for Elf {
-    fn parse(bin: &Vec<u8>) -> Result<Elf> {
+    fn parse(bin: Vec<u8>) -> Result<Elf> {
         
         if !is_elf(&bin) {
             return Err(ParsingError::NotElf)
         }
 
         // TODO: ADD lengths checks to ensure it is an ELF of prober length
-        
+        let e_ident = [0x7F, 0x45, 0x4C, 0x46];
+        let e_endianness = parse_endianness(&bin);
+        let e_class = parse_class(&bin);
+        let ei_version = bin[0x06];
+        let e_abi_version = bin[0x08];
+        let e_padding = [bin[0x9],bin[0xA],bin[0xB],bin[0xC],bin[0xD],bin[0xE],bin[0xF]];
+        let e_abi = parse_abi(&bin);
+        let e_version = LittleEndian::read_u32(&bin[0x14..0x18]);
+        let e_arch = parse_arch(&bin);
+        let e_type = parse_type(&bin);
+        let e_entry = parse_entry64(&bin);
         let shstrndx = LittleEndian::read_u16(&bin[0x3E..0x40]); 
         let e_flags = LittleEndian::read_u32(&bin[0x30..0x34]);
         let size = LittleEndian::read_u16(&bin[0x34..0x36]);
@@ -229,17 +239,17 @@ impl Parseable<Elf> for Elf {
         // let sections = section::parse_sections(bin,&section_hdrs); 
         
         return Ok(Elf{
-            e_ident:        [0x7F, 0x45, 0x4C, 0x46],
-            e_endianness:   parse_endianness(&bin),
-            e_class:        parse_class(&bin),
-            ei_version:     bin[0x06],
-            e_abi_version:  bin[0x08],
-            e_padding:      [bin[0x9],bin[0xA],bin[0xB],bin[0xC],bin[0xD],bin[0xE],bin[0xF]],
-            e_abi:          parse_abi(&bin),
-            e_version:      LittleEndian::read_u32(&bin[0x14..0x18]),
-            e_arch:         parse_arch(&bin),
-            e_type:         parse_type(&bin),
-            e_entry:        parse_entry64(&bin),
+            e_ident,
+            e_endianness,
+            e_class,
+            ei_version,
+            e_abi_version,
+            e_padding,
+            e_abi,
+            e_version,
+            e_arch,
+            e_type,
+            e_entry,
             e_flags,
             size,
             phdr_offset,
@@ -350,5 +360,5 @@ fn parse_endianness(bin: &Vec<u8>) -> Elf_endiannes {
 
 pub fn read_file(path: &str) -> Result<Elf> {
     let bin = fs::read(path).expect("Failed to read path"); 
-    Elf::parse(&bin) 
+    Elf::parse(bin) 
 }

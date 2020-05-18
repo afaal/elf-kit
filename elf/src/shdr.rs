@@ -49,6 +49,7 @@ enum Shdr_flags {
     ORDERED = 0x4000000,
     EXCLUDE = 0x8000000
 }
+#[derive(Clone)]
 pub struct SectionHeader {
     pub name: String,
     shstrndx_offset: u32,

@@ -6,11 +6,12 @@ pub struct Section {
 }
 
 impl Section {
-    pub fn from(hdr: SectionHeader, bin: &Vec<u8>) -> Section {
-        return Section{
-            hdr,
-            content: bin.to_vec()
+    // this is where we 
+        pub fn from(hdr: SectionHeader, bin: &Vec<u8>) -> Section {
+            Section { 
+                hdr,
+                content: vec![]
+            }
         }
-    }
 }
 
