@@ -16,10 +16,6 @@ pub mod section;
 use segment::Segment;
 use section::Section;
 
-trait Parseable<T> {  
-    fn parse(bin: Vec<u8>) -> Result<T>;
-}
-
 #[derive(Debug, Clone)]
 pub enum ParsingError {
     NotElf,
@@ -104,7 +100,7 @@ pub enum Elf_abi {
     OpenVOS = 0x12
 }
 
-pub struct Elf {
+pub struct Elf_header {
     e_ident: [u8;4],
     e_class: Elf_class, 
     e_endianness: Elf_endiannes,
@@ -124,10 +120,13 @@ pub struct Elf {
     shdr_offset: u64,
     shdr_size: u16,
     shdr_num: u16,
-    // pub program_hdrs: Vec<phdr::ProgramHeader>,
-    // pub section_hdrs: Vec<shdr::SectionHeader>,
-    segments: Vec<Segment>,
     shstrndx: u16
+}
+
+pub struct Elf {
+    header: Elf_header,    // pub program_hdrs: Vec<phdr::ProgramHeader>,
+    // pub section_hdrs: Vec<shdr::SectionHeader>,
+    pub segments: Vec<Segment>,
 }
 
 impl Elf {
@@ -139,26 +138,26 @@ impl Elf {
         // do i end up owning this data, thus preventing me from using sh_type elsewhere? 
         // bin.extend_from_slice(&(self.p_type as u32).to_le_bytes()); 
         // ASSEMBLE THE ELF HEADER
-        bin.extend_from_slice(&self.e_ident);  
-        bin.extend_from_slice(&(self.e_class as u8).to_le_bytes()); 
-        bin.extend_from_slice(&(self.e_endianness as u8).to_le_bytes()); 
-        bin.extend_from_slice(&self.ei_version.to_le_bytes()); 
-        bin.extend_from_slice(&(self.e_abi as u8).to_le_bytes()); 
-        bin.extend_from_slice(&[self.e_abi_version]);
-        bin.extend_from_slice(&self.e_padding);
-        bin.extend_from_slice(&(self.e_type as u16).to_le_bytes()); 
-        bin.extend_from_slice(&(self.e_arch as u16).to_le_bytes()); 
-        bin.extend_from_slice(&self.e_version.to_le_bytes()); 
-        bin.extend_from_slice(&self.e_entry.to_le_bytes()); 
-        bin.extend_from_slice(&self.phdr_offset.to_le_bytes()); 
-        bin.extend_from_slice(&self.shdr_offset.to_le_bytes()); 
-        bin.extend_from_slice(&self.e_flags.to_le_bytes()); 
-        bin.extend_from_slice(&self.size.to_le_bytes()); 
-        bin.extend_from_slice(&self.phdr_size.to_le_bytes()); 
-        bin.extend_from_slice(&self.phdr_num.to_le_bytes()); 
-        bin.extend_from_slice(&self.shdr_size.to_le_bytes()); 
-        bin.extend_from_slice(&self.shdr_num.to_le_bytes()); 
-        bin.extend_from_slice(&self.shstrndx.to_le_bytes()); 
+        bin.extend_from_slice(&self.header.e_ident);  
+        bin.extend_from_slice(&(self.header.e_class as u8).to_le_bytes()); 
+        bin.extend_from_slice(&(self.header.e_endianness as u8).to_le_bytes()); 
+        bin.extend_from_slice(&self.header.ei_version.to_le_bytes()); 
+        bin.extend_from_slice(&(self.header.e_abi as u8).to_le_bytes()); 
+        bin.extend_from_slice(&[self.header.e_abi_version]);
+        bin.extend_from_slice(&self.header.e_padding);
+        bin.extend_from_slice(&(self.header.e_type as u16).to_le_bytes()); 
+        bin.extend_from_slice(&(self.header.e_arch as u16).to_le_bytes()); 
+        bin.extend_from_slice(&self.header.e_version.to_le_bytes()); 
+        bin.extend_from_slice(&self.header.e_entry.to_le_bytes()); 
+        bin.extend_from_slice(&self.header.phdr_offset.to_le_bytes()); 
+        bin.extend_from_slice(&self.header.shdr_offset.to_le_bytes()); 
+        bin.extend_from_slice(&self.header.e_flags.to_le_bytes()); 
+        bin.extend_from_slice(&self.header.size.to_le_bytes()); 
+        bin.extend_from_slice(&self.header.phdr_size.to_le_bytes()); 
+        bin.extend_from_slice(&self.header.phdr_num.to_le_bytes()); 
+        bin.extend_from_slice(&self.header.shdr_size.to_le_bytes()); 
+        bin.extend_from_slice(&self.header.shdr_num.to_le_bytes()); 
+        bin.extend_from_slice(&self.header.shstrndx.to_le_bytes()); 
 
         // TODO: All ofsets should be calculated dynamically when recreating the
         // binary this is to accomodate changes made after parsing.
@@ -204,10 +203,19 @@ fn pad(size: u32) -> Vec<u8> {
     return vec![0; size as usize]; 
 }
 
-
-
-impl Parseable<Elf> for Elf {
+impl Elf {
     fn parse(bin: Vec<u8>) -> Result<Elf> {
+        return Ok(Elf {
+            header: Elf_header::parse(&bin)?, 
+            segments: segment::parse_segments(bin)?,
+        })
+    }
+}
+
+
+
+impl Elf_header {
+    fn parse(bin: &Vec<u8>) -> Result<Elf_header> {
         
         if !is_elf(&bin) {
             return Err(ParsingError::NotElf)
@@ -235,10 +243,9 @@ impl Parseable<Elf> for Elf {
         let shdr_size = LittleEndian::read_u16(&bin[0x3A..0x3C]);
         let shdr_num = LittleEndian::read_u16(&bin[0x3C..0x3E]);
         let section_hdrs = shdr::parse_section_header(&bin, shstrndx)?;
-        let segments = segment::parse_segments(bin)?; 
         // let sections = section::parse_sections(bin,&section_hdrs); 
         
-        return Ok(Elf{
+        return Ok(Elf_header{
             e_ident,
             e_endianness,
             e_class,
@@ -258,8 +265,7 @@ impl Parseable<Elf> for Elf {
             shdr_offset,
             shdr_size,
             shdr_num,
-            shstrndx,
-            segments,
+            shstrndx
             // Add sections to           
         });   
     }

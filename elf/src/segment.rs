@@ -9,7 +9,10 @@ pub struct Segment {
     // Either should be able not to be set
     pub phdr: ProgramHeader,
     pub raw_content: Vec<u8>,
-    pub shdrs: Vec<SectionHeader> 
+    pub shdrs: Vec<SectionHeader>,
+    // store nested segments -- ideally we would have all load segments at the
+    // top level, and their children nested
+    pub segments: Vec<Segment>
 }
 
 impl Segment {
@@ -18,7 +21,8 @@ impl Segment {
         return Segment{
             phdr,
             shdrs,
-            raw_content: bin
+            raw_content: bin,
+            segments: vec![],
         }
         
     }
@@ -41,13 +45,11 @@ pub fn parse_segments(bin: Vec<u8>) -> crate::Result< Vec<Segment> > {
         let mut raw_content = bin[phdr.offset as usize..(&phdr.offset+&phdr.filesz) as usize].to_vec(); 
         
         for shdr in &section_hdrs {
-            
             // The section is a part of a section if it's offset is between the segments offset and filez 
             if shdr.offset >= phdr.offset && shdr.offset <= phdr.offset+phdr.filesz {
                 // the offset needs to be relative to the segment start
                 shdrs.push(shdr.clone()); 
             } 
-
         }
 
         segments.push(
