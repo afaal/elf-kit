@@ -35,21 +35,40 @@ pub fn parse_segments(bin: Vec<u8>) -> crate::Result< Vec<Segment> > {
     let section_hdrs = shdr::parse_section_header(&bin, shstrndx)?; 
     let mut segments = vec![]; 
     
-    // TODO: find embeded sections
-    
+    // TODO: find embeded sections    
     
     // use the program headers to parse the file 
     
     for phdr in program_hdrs {
         let mut shdrs:Vec<SectionHeader> = vec![]; 
         let mut raw_content = bin[phdr.offset as usize..(&phdr.offset+&phdr.filesz) as usize].to_vec(); 
-        
+
+        // We need to include the end, but exclude the beginning?
         for shdr in &section_hdrs {
+            match shdr.sh_type {
+                
+                // We are not finding the bss section. This is due to the bss
+                // section being loaded on program init, and thus being placed
+                // at the absolute end of segment 5 (load) thus failing the if
+                // statement because it overflows the file size As a result we
+                // make a check for specifically NOBITS sections and have them
+                // include the end aswell 
+        
+                shdr::Shdr_type::NOBITS => {
+                    if shdr.offset > phdr.offset && shdr.offset <= phdr.offset+phdr.filesz {
+                        // the offset needs to be relative to the segment start
+                        shdrs.push(shdr.clone()); 
+                    }                                  
+                },
+                _ => {
+                    if shdr.offset >= phdr.offset && shdr.offset < phdr.offset+phdr.filesz {
+                        // the offset needs to be relative to the segment start
+                        shdrs.push(shdr.clone()); 
+                    } 
+                }
+            }          
             // The section is a part of a section if it's offset is between the segments offset and filez 
-            if shdr.offset >= phdr.offset && shdr.offset <= phdr.offset+phdr.filesz {
-                // the offset needs to be relative to the segment start
-                shdrs.push(shdr.clone()); 
-            } 
+            
         }
 
         segments.push(

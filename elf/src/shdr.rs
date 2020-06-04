@@ -5,7 +5,7 @@ use byteorder::*;
 
 #[repr(u32)]
 #[derive(Copy, Clone)]
-enum Shdr_type {
+pub enum Shdr_type {
     NULL = 0x0,
     PROGBITS = 0x1,
     SYMTAB = 0x2,
@@ -52,7 +52,7 @@ enum Shdr_flags {
 pub struct SectionHeader {
     pub name: String,
     shstrndx_offset: u32,
-    sh_type: Shdr_type,
+    pub sh_type: Shdr_type,
     flags: Shdr_flags,
     addr: u64,
     pub offset: u64,

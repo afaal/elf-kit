@@ -37,6 +37,7 @@ impl error::Error for ParsingError {
         None
     }
 }
+
 #[derive(Copy, Clone)]
 pub enum Elf_type {
     NONE = 0x0,
