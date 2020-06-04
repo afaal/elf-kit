@@ -57,13 +57,19 @@ pub fn parse_segments(bin: Vec<u8>) -> crate::Result< Vec<Segment> > {
                 shdr::Shdr_type::NOBITS => {
                     if shdr.offset > phdr.offset && shdr.offset <= phdr.offset+phdr.filesz {
                         // the offset needs to be relative to the segment start
-                        shdrs.push(shdr.clone()); 
+                        let mut t_shdr = shdr.clone();
+                        t_shdr.offset = t_shdr.offset - phdr.offset; 
+
+                        shdrs.push(t_shdr); 
                     }                                  
                 },
                 _ => {
                     if shdr.offset >= phdr.offset && shdr.offset < phdr.offset+phdr.filesz {
                         // the offset needs to be relative to the segment start
-                        shdrs.push(shdr.clone()); 
+                        let mut t_shdr = shdr.clone();
+                        t_shdr.offset = t_shdr.offset - phdr.offset; 
+
+                        shdrs.push(t_shdr); 
                     } 
                 }
             }          
