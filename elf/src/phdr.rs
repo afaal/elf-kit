@@ -30,7 +30,7 @@ pub struct ProgramHeader {
     pub filesz: u64,
     memsz: u64,
     p_flags: u64,
-    p_align: u64
+    pub p_align: u64
 }
 
 impl ProgramHeader {

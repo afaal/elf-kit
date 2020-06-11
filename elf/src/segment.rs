@@ -88,3 +88,13 @@ pub fn parse_segments(bin: Vec<u8>) -> crate::Result< Vec<Segment> > {
 
     return Ok(segments); 
 }
+
+pub fn get_segments_size(segments: &Vec<Segment>) -> u64 {
+    let mut t = 0; 
+    
+    for seg in segments {
+        t += seg.phdr.filesz;
+        t += seg.phdr.p_align; 
+    }
+    return t;
+}

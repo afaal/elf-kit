@@ -132,12 +132,17 @@ pub struct Elf {
 
 impl Elf {
     // return the elf as a binary file
-    pub fn to_le(&self) -> Vec<u8> {
+    pub fn to_le(self) -> Vec<u8> {
         // bin.append([1,2,3].to_vec())
-        let mut bin = vec![]; 
+        println!("{}", segment::get_segments_size(&self.segments));
 
-        // do i end up owning this data, thus preventing me from using sh_type elsewhere? 
-        // bin.extend_from_slice(&(self.p_type as u32).to_le_bytes()); 
+        let mut bin = vec![];
+        // get segment create an exess of space, but works for testings. In the
+        // end this should properly designate space based on alignments 
+        bin.resize(segment::get_segments_size(&self.segments) as usize, 0);
+
+
+
         // ASSEMBLE THE ELF HEADER
         bin.extend_from_slice(&self.header.e_ident);  
         bin.extend_from_slice(&(self.header.e_class as u8).to_le_bytes()); 
@@ -167,32 +172,25 @@ impl Elf {
         //  - Program Header (offset, vaddr, paddr, filesz, memsz, p_align)
         //  - Section Header (shstrndx, addr, addralign, offset, size)
 
-        // TODO: ADD necesarry padding to program header offset.
-        
-        // Add program headers at the program offset    
-        
-
-        // TODO: ADD necesarry padding using align
-
         // <<< Binary SEGMENTS GOES HERE 
-        for segment in &self.segments {
-            println!("[adding segment] offset: {:x} | size: {:x} ", bin.len(), segment.raw_content.len()); 
-            bin.extend(&segment.raw_content); 
+        // TODO: expand bin to fit the entire size of the file before splicing
+        for segment in self.segments {
+            // println!("[adding segment] offset: {:x} | size: {:x} ", bin.len(), segment.raw_content.len()); 
+            // bin.extend(&segment.raw_content); 
+            if segment.phdr.filesz == 0 {
+                continue;
+            }
+            // add write segment into the binary 
+            bin.splice(segment.phdr.offset as usize..segment.phdr.offset as usize +segment.raw_content.len(), segment.raw_content);
         }
 
-        // TODO: ADD necesarry padding using align
-
-
-
         // <<< SECTIONS HEADERS GOES HERE
-        
         
         return bin;
     }
 
-    pub fn write_file(&self, path: &str) -> Result<()> {
+    pub fn write_file(self, path: &str) -> Result<()> {
         let bin = self.to_le(); 
-        
         match fs::write(path, bin) {
             Ok(res) => Ok(res),
             Err(_) => return Err(ParsingError::ParsingError)
