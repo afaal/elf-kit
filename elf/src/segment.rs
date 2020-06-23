@@ -93,8 +93,7 @@ pub fn get_segments_size(segments: &Vec<Segment>) -> u64 {
     let mut t = 0; 
     
     for seg in segments {
-        t += seg.phdr.filesz;
-        t += seg.phdr.p_align; 
+        t += seg.phdr.filesz + (seg.phdr.p_align - (seg.phdr.filesz % seg.phdr.p_align))
     }
     return t;
 }
