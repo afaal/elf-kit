@@ -3,7 +3,7 @@ use crate::Result;
 use byteorder::*; 
 
 #[derive(Copy, Clone)]
-enum Phdr_type {
+pub enum Phdr_type {
     NULL = 0x0,
     LOAD = 0x1,
     DYNAMIC = 0x2,
@@ -22,7 +22,7 @@ enum Phdr_type {
 }
 
 pub struct ProgramHeader {
-    p_type: Phdr_type,
+    pub p_type: Phdr_type,
     flags: u32,
     pub offset: u64,
     vaddr: u64,
