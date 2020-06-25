@@ -165,7 +165,7 @@ pub struct Elf {
 
 impl Elf {
     // return the elf as a binary file
-    pub fn to_le(self) -> Vec<u8> {
+    pub fn to_le(mut self) -> Vec<u8> {
         let mut bin = vec![];
 
         // get segment create an exess of space, but works for testings. In the
@@ -183,18 +183,36 @@ impl Elf {
         // We need to create a new shstrndx using the segments 
 
 
-        // get segment blob = 
+        // get segment blob
         let segment_blob = segment::get_segments_blob(&self.segments);  
         
-        // calculate the elf header size, program header and section headers. 
+        // TODO: calculate the elf header size, program header and section headers.
+        let ehdr_offset = 0x0; 
+        let phdr_offset = 0x40; 
+        let segment_offset = phdr_offset+segment::phdrs_size(&self.segments);
+        let shdr_offset = segment_offset+segment_blob.len(); 
+
+        // TODO: Set the offsets to be file offsets instead of local offsets
+        self.header.phdr_offset = phdr_offset as u64; 
+        self.header.phdr_num = self.segments.len() as u16; 
         
-                
+        self.header.shdr_offset = shdr_offset as u64; 
+        self.header.shdr_num = segment::shdrs_len(&self.segments) as u16; 
+
+        // - change phdrs offset
+
+        // - we need to have dynamic program header offsets as well
+
+
+        // - change shdrs offset
+
+
+
+
         // alterations to the elf_headers offsets of section headers and program headers should be made before getting the blob 
         let phdrs_blob = segment::get_phdrs_blob(&self.segments);         
         let shdrs_blob = segment::get_shdrs_blob(&self.segments);         
-        let ehdr_blob = &self.header.to_le(); 
-
-
+        let ehdr_blob = self.header.to_le(); 
 
         for segment in self.segments {
             // println!("[adding segment] offset: {:x} | size: {:x} ", bin.len(), segment.raw_content.len()); 
@@ -207,8 +225,6 @@ impl Elf {
 
             // add write segment into the binary 
         }
-
-
 
         return bin;
     }
