@@ -168,22 +168,14 @@ impl Elf {
     pub fn to_le(mut self) -> Vec<u8> {
         let mut bin = vec![];
 
-        // get segment create an exess of space, but works for testings. In the
-        // end this should properly designate space based on alignments 
-        bin.resize(segment::get_segments_size(&self.segments) as usize, 0);
+        // bin.resize(segment::get_segments_size(&self.segments) as usize, 0);
 
-
-        // TODO: All ofsets should be calculated dynamically when recreating the
-        // binary this is to accomodate changes made after parsing.
-        // Offsets to change: 
-        //  - ELF header (phdr, shdr, strhrdndx)
-        //  - Program Header (offset, vaddr, paddr, filesz, memsz, p_align)
-        //  - Section Header (shstrndx, addr, addralign, offset, size)
         
         // We need to create a new shstrndx using the segments 
 
 
         // get segment blob
+        // TODO: We need to take nested segments into account.
         let segment_blob = segment::get_segments_blob(&self.segments);  
         
         // TODO: calculate the elf header size, program header and section headers.
@@ -199,32 +191,24 @@ impl Elf {
         self.header.shdr_offset = shdr_offset as u64; 
         self.header.shdr_num = segment::shdrs_len(&self.segments) as u16; 
 
-        // - change phdrs offset
 
-        // - we need to have dynamic program header offsets as well
+        // - we need to have dynamic program header offsets as well -- implemented?
 
-
-        // - change shdrs offset
-
-
-
-
+        
+        
         // alterations to the elf_headers offsets of section headers and program headers should be made before getting the blob 
+        // - change phdrs offset -- implemented
+        // - change shdrs offset -- implemented
         let phdrs_blob = segment::get_phdrs_blob(&self.segments, segment_offset);         
         let shdrs_blob = segment::get_shdrs_blob(&self.segments);         
         let ehdr_blob = self.header.to_le(); 
 
-        for segment in self.segments {
-            // println!("[adding segment] offset: {:x} | size: {:x} ", bin.len(), segment.raw_content.len()); 
-            // bin.extend(&segment.raw_content); 
-            if segment.phdr.filesz == 0 {
-                continue;
-            }
-            
-            bin.splice(segment.phdr.offset as usize..segment.phdr.offset as usize +segment.raw_content.len(), segment.raw_content);
+        
 
-            // add write segment into the binary 
-        }
+        bin.extend(ehdr_blob); 
+        bin.extend(phdrs_blob); 
+        bin.extend(segment_blob); 
+        bin.extend(shdrs_blob); 
 
         return bin;
     }

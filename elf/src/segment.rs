@@ -37,13 +37,18 @@ pub fn parse_segments(bin: Vec<u8>) -> crate::Result< Vec<Segment> > {
     let section_hdrs = shdr::parse_section_header(&bin, shstrndx)?; 
     let mut segments = vec![]; 
     
+
+    // TODO: fix offset calculation. We are currently adding segments after eachother, but some might be nested within others. 
+    // ALso there is really no need for this calculation. As we simply need to determine where the segments begin, and then 
+    // subtract that from their current offset, then we get an offset relative to the beginning of the segments blob.
+
+    let mut offset:usize = 0; 
     // use the program headers to parse the file 
     
     for mut phdr in program_hdrs {
         let mut shdrs:Vec<SectionHeader> = vec![]; 
         let mut raw_content = bin[phdr.offset as usize..(&phdr.offset+&phdr.filesz) as usize].to_vec(); 
 
-        let mut offset:usize = 0; 
 
         // We need to include the end, but exclude the beginning?
         for shdr in &section_hdrs {
