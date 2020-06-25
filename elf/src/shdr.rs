@@ -138,23 +138,7 @@ impl SectionHeader{
     // print the section header as a LittleEndian formatted object
     // should this come with/or without padding??? 
     pub fn to_le(&self) -> Vec<u8> {
-        // bin.append([1,2,3].to_vec())
-        let mut bin = vec![]; 
-
-        bin.extend_from_slice(&self.shstrndx_offset.to_le_bytes()); 
-        
-        // do i end up owning this data, thus preventing me from using sh_type elsewhere? 
-        bin.extend_from_slice(&(self.sh_type as u32).to_le_bytes()); 
-        bin.extend_from_slice(&(self.flags as u64).to_le_bytes()); 
-        bin.extend_from_slice(&self.addr.to_le_bytes()); 
-        bin.extend_from_slice(&self.offset.to_le_bytes()); 
-        bin.extend_from_slice(&self.size.to_le_bytes()); 
-        bin.extend_from_slice(&self.link.to_le_bytes()); 
-        bin.extend_from_slice(&self.info.to_le_bytes()); 
-        bin.extend_from_slice(&self.addralign.to_le_bytes()); 
-        bin.extend_from_slice(&self.entsize.to_le_bytes()); 
-        
-        return bin; 
+        self.to_le_offset(0)
     }
 
     pub fn to_le_offset(&self, offset: usize) -> Vec<u8> {

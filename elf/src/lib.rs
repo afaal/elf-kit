@@ -210,7 +210,7 @@ impl Elf {
 
 
         // alterations to the elf_headers offsets of section headers and program headers should be made before getting the blob 
-        let phdrs_blob = segment::get_phdrs_blob(&self.segments);         
+        let phdrs_blob = segment::get_phdrs_blob(&self.segments, segment_offset);         
         let shdrs_blob = segment::get_shdrs_blob(&self.segments);         
         let ehdr_blob = self.header.to_le(); 
 

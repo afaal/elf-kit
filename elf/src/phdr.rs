@@ -51,13 +51,17 @@ impl ProgramHeader {
     } 
 
     pub fn to_le(&self) -> Vec<u8> {
+        self.to_le_offset(0)
+    }
+
+    pub fn to_le_offset(&self, offset:usize) -> Vec<u8> {
         // bin.append([1,2,3].to_vec())
         let mut bin = vec![]; 
         
         // do i end up owning this data, thus preventing me from using sh_type elsewhere? 
         bin.extend_from_slice(&(self.p_type as u32).to_le_bytes()); 
         bin.extend_from_slice(&self.flags.to_le_bytes()); 
-        bin.extend_from_slice(&self.offset.to_le_bytes()); 
+        bin.extend_from_slice(&(self.offset + offset as u64).to_le_bytes()); 
         bin.extend_from_slice(&self.vaddr.to_le_bytes()); 
         bin.extend_from_slice(&self.paddr.to_le_bytes()); 
         bin.extend_from_slice(&self.filesz.to_le_bytes()); 

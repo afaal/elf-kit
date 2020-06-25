@@ -129,11 +129,11 @@ pub fn get_segments_blob(segments: &Vec<Segment>) -> Vec<u8> {
     return blob; 
 }
 
-pub fn get_phdrs_blob(segments: &Vec<Segment>) -> Vec<u8> {
+pub fn get_phdrs_blob(segments: &Vec<Segment>, offset: usize) -> Vec<u8> {
     let mut blob = vec![]; 
     
     for segment in segments {
-        blob.extend_from_slice(&segment.phdr.to_le()); 
+        blob.extend_from_slice(&segment.phdr.to_le_offset(offset)); 
     }
 
     return blob; 
