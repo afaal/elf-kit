@@ -52,36 +52,25 @@ pub fn parse_segments(bin: Vec<u8>) -> crate::Result< Vec<Segment> > {
 
         // We need to include the end, but exclude the beginning?
         for shdr in &section_hdrs {
-            match shdr.sh_type {
-                
-                // We are not finding the bss section. This is due to the bss
-                // section being loaded on program init, and thus being placed
-                // at the absolute end of segment 5 (load) thus failing the if
-                // statement because it overflows the file size As a result we
-                // make a check for specifically NOBITS sections and have them
-                // include the end aswell 
-        
-                // TODO: Refactor this into an if let
 
-                shdr::Shdr_type::NOBITS => {
-                    if shdr.offset > phdr.offset && shdr.offset <= phdr.offset+phdr.filesz {
-                        // the offset needs to be relative to the segment start
-                        let mut t_shdr = shdr.clone();
-                        t_shdr.offset = t_shdr.offset - phdr.offset; 
+            if let shdr::Shdr_type::NOBITS = shdr.sh_type {
+                if shdr.offset > phdr.offset && shdr.offset <= phdr.offset+phdr.filesz {
+                    // the offset needs to be relative to the segment start
+                    let mut t_shdr = shdr.clone();
+                    t_shdr.offset = t_shdr.offset - phdr.offset; 
 
-                        shdrs.push(t_shdr); 
-                    }                                  
-                },
-                _ => {
-                    if shdr.offset >= phdr.offset && shdr.offset < phdr.offset+phdr.filesz {
-                        // the offset needs to be relative to the segment start
-                        let mut t_shdr = shdr.clone();
-                        t_shdr.offset = t_shdr.offset - phdr.offset; 
+                    shdrs.push(t_shdr); 
+                }  
+            } else {
+                if shdr.offset >= phdr.offset && shdr.offset < phdr.offset+phdr.filesz {
+                    // the offset needs to be relative to the segment start
+                    let mut t_shdr = shdr.clone();
+                    t_shdr.offset = t_shdr.offset - phdr.offset; 
 
-                        shdrs.push(t_shdr); 
-                    } 
-                }
-            }          
+                    shdrs.push(t_shdr); 
+                } 
+            }
+                    
             // The section is a part of a section if it's offset is between the segments offset and filez 
             
         }
