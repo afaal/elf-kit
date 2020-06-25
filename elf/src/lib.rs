@@ -124,46 +124,54 @@ pub struct Elf_header {
     shstrndx: u16
 }
 
+impl Elf_header {
+
+    pub fn to_le(self) -> Vec<u8> {
+        let mut bin = vec![]; 
+
+        // ASSEMBLE THE ELF HEADER 
+        bin.extend_from_slice(&self.e_ident);  
+        bin.extend_from_slice(&(self.e_class as u8).to_le_bytes()); 
+        bin.extend_from_slice(&(self.e_endianness as u8).to_le_bytes()); 
+        bin.extend_from_slice(&self.ei_version.to_le_bytes()); 
+        bin.extend_from_slice(&(self.e_abi as u8).to_le_bytes()); 
+        bin.extend_from_slice(&[self.e_abi_version]);
+        bin.extend_from_slice(&self.e_padding);
+        bin.extend_from_slice(&(self.e_type as u16).to_le_bytes()); 
+        bin.extend_from_slice(&(self.e_arch as u16).to_le_bytes()); 
+        bin.extend_from_slice(&self.e_version.to_le_bytes()); 
+        bin.extend_from_slice(&self.e_entry.to_le_bytes()); 
+        bin.extend_from_slice(&self.phdr_offset.to_le_bytes()); 
+        bin.extend_from_slice(&self.shdr_offset.to_le_bytes()); 
+        bin.extend_from_slice(&self.e_flags.to_le_bytes()); 
+        bin.extend_from_slice(&self.size.to_le_bytes()); 
+        bin.extend_from_slice(&self.phdr_size.to_le_bytes()); 
+        bin.extend_from_slice(&self.phdr_num.to_le_bytes()); 
+        bin.extend_from_slice(&self.shdr_size.to_le_bytes()); 
+        bin.extend_from_slice(&self.shdr_num.to_le_bytes()); 
+        bin.extend_from_slice(&self.shstrndx.to_le_bytes()); 
+
+        return bin; 
+    }
+
+}
+
+
 pub struct Elf {
     header: Elf_header,    // pub program_hdrs: Vec<phdr::ProgramHeader>,
-    // pub section_hdrs: Vec<shdr::SectionHeader>,
     pub segments: Vec<Segment>,
+    // pub section_hdrs: Vec<shdr::SectionHeader>,
 }
 
 impl Elf {
     // return the elf as a binary file
     pub fn to_le(self) -> Vec<u8> {
-        // bin.append([1,2,3].to_vec())
-        println!("{}", segment::get_segments_size(&self.segments));
-
         let mut bin = vec![];
+
         // get segment create an exess of space, but works for testings. In the
         // end this should properly designate space based on alignments 
         bin.resize(segment::get_segments_size(&self.segments) as usize, 0);
 
-
-
-        // ASSEMBLE THE ELF HEADER
-        bin.extend_from_slice(&self.header.e_ident);  
-        bin.extend_from_slice(&(self.header.e_class as u8).to_le_bytes()); 
-        bin.extend_from_slice(&(self.header.e_endianness as u8).to_le_bytes()); 
-        bin.extend_from_slice(&self.header.ei_version.to_le_bytes()); 
-        bin.extend_from_slice(&(self.header.e_abi as u8).to_le_bytes()); 
-        bin.extend_from_slice(&[self.header.e_abi_version]);
-        bin.extend_from_slice(&self.header.e_padding);
-        bin.extend_from_slice(&(self.header.e_type as u16).to_le_bytes()); 
-        bin.extend_from_slice(&(self.header.e_arch as u16).to_le_bytes()); 
-        bin.extend_from_slice(&self.header.e_version.to_le_bytes()); 
-        bin.extend_from_slice(&self.header.e_entry.to_le_bytes()); 
-        bin.extend_from_slice(&self.header.phdr_offset.to_le_bytes()); 
-        bin.extend_from_slice(&self.header.shdr_offset.to_le_bytes()); 
-        bin.extend_from_slice(&self.header.e_flags.to_le_bytes()); 
-        bin.extend_from_slice(&self.header.size.to_le_bytes()); 
-        bin.extend_from_slice(&self.header.phdr_size.to_le_bytes()); 
-        bin.extend_from_slice(&self.header.phdr_num.to_le_bytes()); 
-        bin.extend_from_slice(&self.header.shdr_size.to_le_bytes()); 
-        bin.extend_from_slice(&self.header.shdr_num.to_le_bytes()); 
-        bin.extend_from_slice(&self.header.shstrndx.to_le_bytes()); 
 
         // TODO: All ofsets should be calculated dynamically when recreating the
         // binary this is to accomodate changes made after parsing.
@@ -171,21 +179,37 @@ impl Elf {
         //  - ELF header (phdr, shdr, strhrdndx)
         //  - Program Header (offset, vaddr, paddr, filesz, memsz, p_align)
         //  - Section Header (shstrndx, addr, addralign, offset, size)
+        
+        // We need to create a new shstrndx using the segments 
 
-        // <<< Binary SEGMENTS GOES HERE 
-        // TODO: expand bin to fit the entire size of the file before splicing
+
+        // get segment blob = 
+        let segment_blob = segment::get_segments_blob(&self.segments);  
+        
+        // calculate the elf header size, program header and section headers. 
+        
+                
+        // alterations to the elf_headers offsets of section headers and program headers should be made before getting the blob 
+        let phdrs_blob = segment::get_phdrs_blob(&self.segments);         
+        let shdrs_blob = segment::get_shdrs_blob(&self.segments);         
+        let ehdr_blob = &self.header.to_le(); 
+
+
+
         for segment in self.segments {
             // println!("[adding segment] offset: {:x} | size: {:x} ", bin.len(), segment.raw_content.len()); 
             // bin.extend(&segment.raw_content); 
             if segment.phdr.filesz == 0 {
                 continue;
             }
-            // add write segment into the binary 
+            
             bin.splice(segment.phdr.offset as usize..segment.phdr.offset as usize +segment.raw_content.len(), segment.raw_content);
+
+            // add write segment into the binary 
         }
 
-        // <<< SECTIONS HEADERS GOES HERE
-        
+
+
         return bin;
     }
 

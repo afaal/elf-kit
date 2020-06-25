@@ -97,3 +97,38 @@ pub fn get_segments_size(segments: &Vec<Segment>) -> u64 {
     }
     return t;
 }
+
+pub fn get_segments_blob(segments: &Vec<Segment>) -> Vec<u8> {
+    let mut blob = vec![]; 
+    
+    for segment in segments {
+        // we want to make sure everything is properly aligned at this point.
+        blob.extend_from_slice(&segment.raw_content); 
+    }
+
+    return blob; 
+}
+
+pub fn get_phdrs_blob(segments: &Vec<Segment>) -> Vec<u8> {
+    let mut blob = vec![]; 
+    
+    for segment in segments {
+        blob.extend_from_slice(&segment.phdr.to_le()); 
+    }
+
+    return blob; 
+}
+
+pub fn get_shdrs_blob(segments: &Vec<Segment>) -> Vec<u8> {
+    let mut blob = vec![]; 
+    
+    // TODO: We need to construct the strings table.
+
+    for segment in segments {
+        for shdr in &segment.shdrs {
+            blob.extend_from_slice(&shdr.to_le()); 
+        }
+    }
+
+    return blob; 
+}
