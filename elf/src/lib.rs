@@ -12,6 +12,7 @@ pub mod phdr;
 pub mod shdr; 
 pub mod segment; 
 pub mod section; 
+pub mod block; 
 
 use segment::Segment;
 use section::Section;
@@ -124,6 +125,12 @@ pub struct Elf_header {
     shstrndx: u16
 }
 
+pub trait parseable {
+    fn to_bin() -> Vec<u8>; 
+    fn parse() -> Vec<block::Block>; 
+
+}
+
 impl Elf_header {
 
     pub fn to_le(self) -> Vec<u8> {
@@ -177,7 +184,10 @@ impl Elf {
         // get segment blob
         // TODO: We need to take nested segments into account.
         let segment_blob = segment::get_segments_blob(&self.segments);  
+
+        // TODO: We need to update the entrypoint
         
+
         // TODO: calculate the elf header size, program header and section headers.
         let ehdr_offset = 0x0; 
         let phdr_offset = 0x40; 
@@ -187,23 +197,12 @@ impl Elf {
         // TODO: Set the offsets to be file offsets instead of local offsets
         self.header.phdr_offset = phdr_offset as u64; 
         self.header.phdr_num = self.segments.len() as u16; 
-        
         self.header.shdr_offset = shdr_offset as u64; 
         self.header.shdr_num = segment::shdrs_len(&self.segments) as u16; 
 
-
-        // - we need to have dynamic program header offsets as well -- implemented?
-
-        
-        
-        // alterations to the elf_headers offsets of section headers and program headers should be made before getting the blob 
-        // - change phdrs offset -- implemented
-        // - change shdrs offset -- implemented
         let phdrs_blob = segment::get_phdrs_blob(&self.segments, segment_offset);         
         let shdrs_blob = segment::get_shdrs_blob(&self.segments);         
         let ehdr_blob = self.header.to_le(); 
-
-        
 
         bin.extend(ehdr_blob); 
         bin.extend(phdrs_blob); 

@@ -142,7 +142,6 @@ impl SectionHeader{
     }
 
     pub fn to_le_offset(&self, offset: usize) -> Vec<u8> {
-        // bin.append([1,2,3].to_vec())
         let mut bin = vec![]; 
 
         bin.extend_from_slice(&self.shstrndx_offset.to_le_bytes()); 

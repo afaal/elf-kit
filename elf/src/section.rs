@@ -13,5 +13,9 @@ impl Section {
             content: vec![]
         }
     }
+
+    pub fn to_le(self) -> Vec<u8> {
+        return self.content
+    }
 }
 

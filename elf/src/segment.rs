@@ -12,6 +12,7 @@ pub struct Segment {
     pub shdrs: Vec<SectionHeader>,
     // store nested segments -- ideally we would have all load segments at the
     // top level, and their children nested
+    pub segments: Vec<Segment> 
 }
 
 impl Segment {
@@ -21,8 +22,20 @@ impl Segment {
             phdr,
             shdrs,
             raw_content: bin,
+            segments: vec![]
         }
         
+    }
+
+    pub fn to_le(&self) -> Vec<u8> {
+
+        let bin: Vec<u8> = self.raw_content.clone();  
+        
+        for seg in &self.segments {
+                
+        }
+
+        return vec![]
     }
 
     pub fn offset(&mut self, offset: usize) {
@@ -37,7 +50,6 @@ pub fn parse_segments(bin: Vec<u8>) -> crate::Result< Vec<Segment> > {
     let section_hdrs = shdr::parse_section_header(&bin, shstrndx)?; 
     let mut segments = vec![]; 
     
-
     // TODO: fix offset calculation. We are currently adding segments after eachother, but some might be nested within others. 
     // ALso there is really no need for this calculation. As we simply need to determine where the segments begin, and then 
     // subtract that from their current offset, then we get an offset relative to the beginning of the segments blob.
@@ -50,7 +62,7 @@ pub fn parse_segments(bin: Vec<u8>) -> crate::Result< Vec<Segment> > {
         let mut raw_content = bin[phdr.offset as usize..(&phdr.offset+&phdr.filesz) as usize].to_vec(); 
 
 
-        // We need to include the end, but exclude the beginning?
+        // Add sections to the segment
         for shdr in &section_hdrs {
 
             if let shdr::Shdr_type::NOBITS = shdr.sh_type {
@@ -70,9 +82,6 @@ pub fn parse_segments(bin: Vec<u8>) -> crate::Result< Vec<Segment> > {
                     shdrs.push(t_shdr); 
                 } 
             }
-                    
-            // The section is a part of a section if it's offset is between the segments offset and filez 
-            
         }
 
 
