@@ -3,8 +3,9 @@ use std::result::*;
 
 fn main() {
 
-    let bin = elf::read_file("test/testBin").expect("Failed with"); 
+    let elf_obj = elf::read_file("test/testBin").expect("Failed with"); 
     
-    
-    bin.write_file("test/testBin.test");
+    elf_obj.to_bin(); 
+
+    // bin.write_file("test/testBin.test");
 }

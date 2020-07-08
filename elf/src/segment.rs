@@ -4,15 +4,16 @@ use byteorder::*;
 use crate::phdr::ProgramHeader;
 use crate::shdr::SectionHeader; 
 use crate::Section;
+use crate::block::Block; 
 
 pub struct Segment {
     // Either should be able not to be set
     pub phdr: ProgramHeader,
-    pub raw_content: Vec<u8>,
-    pub shdrs: Vec<SectionHeader>,
+    // pub raw_content: Vec<u8>,
+    // pub shdrs: Vec<SectionHeader>,
     // store nested segments -- ideally we would have all load segments at the
     // top level, and their children nested
-    pub segments: Vec<Segment> 
+    pub blocks: Vec<Block> 
 }
 
 impl Segment {
@@ -20,22 +21,21 @@ impl Segment {
 
         return Segment{
             phdr,
-            shdrs,
-            raw_content: bin,
-            segments: vec![]
+            // shdrs,
+            // raw_content: bin,
+            blocks: vec![]
         }
         
     }
 
-    pub fn to_le(&self) -> Vec<u8> {
-
-        let bin: Vec<u8> = self.raw_content.clone();  
+    pub fn to_le(self) -> Vec<u8> {
+        let mut bin: Vec<u8> = vec![];   
         
-        for seg in &self.segments {
-                
+        for block in self.blocks {
+            bin.extend(block.to_bin()); 
         }
-
-        return vec![]
+        
+        return bin; 
     }
 
     pub fn offset(&mut self, offset: usize) {
@@ -124,10 +124,10 @@ pub fn get_segments_size(segments: &Vec<Segment>) -> u64 {
 pub fn get_segments_blob(segments: &Vec<Segment>) -> Vec<u8> {
     let mut blob = vec![]; 
     
-    for segment in segments {
-        // we want to make sure everything is properly aligned at this point.
-        blob.extend_from_slice(&segment.raw_content); 
-    }
+    // for segment in segments {
+    //     // we want to make sure everything is properly aligned at this point.
+    //     blob.extend_from_slice(&segment.raw_content); 
+    // }
 
     return blob; 
 }
@@ -149,11 +149,11 @@ pub fn get_shdrs_blob(segments: &Vec<Segment>) -> Vec<u8> {
 
     // We need to update the section offsets to global offsets and not local ones
 
-    for segment in segments {
-        for shdr in &segment.shdrs {
-            blob.extend_from_slice(&shdr.to_le_offset(segment.phdr.offset as usize)); 
-        }
-    }
+    // for segment in segments {
+    //     for shdr in &segment.shdrs {
+    //         blob.extend_from_slice(&shdr.to_le_offset(segment.phdr.offset as usize)); 
+    //     }
+    // }
 
     return blob; 
 }
@@ -171,11 +171,11 @@ pub fn shdrs_size(segments: &Vec<Segment>) -> usize {
     
     // TODO: We need to construct the strings table.
 
-    for segment in segments {
-        for shdr in &segment.shdrs {
-            size += 0x40; 
-        }
-    }
+    // for segment in segments {
+    //     for shdr in &segment.shdrs {
+    //         size += 0x40; 
+    //     }
+    // }
 
     return size; 
 }
@@ -187,11 +187,11 @@ pub fn shdrs_len(segments: &Vec<Segment>) -> usize {
     
     // TODO: We need to construct the strings table.
 
-    for segment in segments {
-        for shdr in &segment.shdrs {
-            size += 1; 
-        }
-    }
+    // for segment in segments {
+    //     for shdr in &segment.shdrs {
+    //         size += 1; 
+    //     }
+    // }
 
     return size; 
 }

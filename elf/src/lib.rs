@@ -8,11 +8,11 @@ use byteorder::*;
 use std::slice::SliceIndex; 
 use std::convert::TryInto; 
 
-pub mod phdr; 
-pub mod shdr; 
-pub mod segment; 
-pub mod section; 
-pub mod block; 
+mod phdr; 
+mod shdr; 
+mod segment; 
+mod section; 
+mod block; 
 
 use segment::Segment;
 use section::Section;
@@ -166,54 +166,75 @@ impl Elf_header {
 
 pub struct Elf {
     header: Elf_header,    // pub program_hdrs: Vec<phdr::ProgramHeader>,
-    pub segments: Vec<Segment>,
+    pub blocks: Vec<block::Block>,
     // pub section_hdrs: Vec<shdr::SectionHeader>,
 }
 
 impl Elf {
     // return the elf as a binary file
-    pub fn to_le(mut self) -> Vec<u8> {
-        let mut bin = vec![];
+    pub fn to_bin(mut self) -> Vec<u8> {
+        // let mut bin = vec![];
 
-        // bin.resize(segment::get_segments_size(&self.segments) as usize, 0);
+        // // bin.resize(segment::get_segments_size(&self.segments) as usize, 0);
 
         
-        // We need to create a new shstrndx using the segments 
+        // // We need to create a new shstrndx using the segments 
 
 
-        // get segment blob
-        // TODO: We need to take nested segments into account.
-        let segment_blob = segment::get_segments_blob(&self.segments);  
+        // // get segment blob
+        // // TODO: We need to take nested segments into account.
+        // let segment_blob = segment::get_segments_blob(&self.segments);  
 
-        // TODO: We need to update the entrypoint
+        // // TODO: We need to update the entrypoint
         
 
-        // TODO: calculate the elf header size, program header and section headers.
-        let ehdr_offset = 0x0; 
-        let phdr_offset = 0x40; 
-        let segment_offset = phdr_offset+segment::phdrs_size(&self.segments);
-        let shdr_offset = segment_offset+segment_blob.len(); 
+        // // TODO: calculate the elf header size, program header and section headers.
+        // let ehdr_offset = 0x0; 
+        // let phdr_offset = 0x40; 
+        // let segment_offset = phdr_offset+segment::phdrs_size(&self.segments);
+        // let shdr_offset = segment_offset+segment_blob.len(); 
 
-        // TODO: Set the offsets to be file offsets instead of local offsets
-        self.header.phdr_offset = phdr_offset as u64; 
-        self.header.phdr_num = self.segments.len() as u16; 
-        self.header.shdr_offset = shdr_offset as u64; 
-        self.header.shdr_num = segment::shdrs_len(&self.segments) as u16; 
+        // // TODO: Set the offsets to be file offsets instead of local offsets
+        // self.header.phdr_offset = phdr_offset as u64; 
+        // self.header.phdr_num = self.segments.len() as u16; 
+        // self.header.shdr_offset = shdr_offset as u64; 
+        // self.header.shdr_num = segment::shdrs_len(&self.segments) as u16; 
 
-        let phdrs_blob = segment::get_phdrs_blob(&self.segments, segment_offset);         
-        let shdrs_blob = segment::get_shdrs_blob(&self.segments);         
-        let ehdr_blob = self.header.to_le(); 
+        // let phdrs_blob = segment::get_phdrs_blob(&self.segments, segment_offset);         
+        // let shdrs_blob = segment::get_shdrs_blob(&self.segments);         
+        // let ehdr_blob = self.header.to_le(); 
 
-        bin.extend(ehdr_blob); 
-        bin.extend(phdrs_blob); 
-        bin.extend(segment_blob); 
-        bin.extend(shdrs_blob); 
+        // bin.extend(ehdr_blob); 
+        // bin.extend(phdrs_blob); 
+        // bin.extend(segment_blob); 
+        // bin.extend(shdrs_blob); 
 
-        return bin;
+        for block in self.blocks {
+            
+            if let block::Block::Segment(s) = block {
+                println!("Segment [{:x}] ", s.phdr.offset); 
+
+                for s_block in s.blocks {
+
+                    if let block::Block::Section(sec) = s_block {
+                        println!("\t {}", sec.hdr.name); 
+                    }
+
+                }
+
+
+            }
+
+        
+            
+        }
+
+        // return bin;
+        vec![] 
     }
 
     pub fn write_file(self, path: &str) -> Result<()> {
-        let bin = self.to_le(); 
+        let bin = self.to_bin(); 
         match fs::write(path, bin) {
             Ok(res) => Ok(res),
             Err(_) => return Err(ParsingError::ParsingError)
@@ -229,7 +250,7 @@ impl Elf {
     fn parse(bin: Vec<u8>) -> Result<Elf> {
         return Ok(Elf {
             header: Elf_header::parse(&bin)?, 
-            segments: segment::parse_segments(bin)?,
+            blocks: block::into_blocks(bin)?,
         })
     }
 }

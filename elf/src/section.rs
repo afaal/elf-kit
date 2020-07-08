@@ -1,8 +1,9 @@
 use crate::shdr::SectionHeader; 
+use crate::block::Block; 
 
 pub struct Section {
     pub hdr: SectionHeader,
-    pub content: Vec<u8>
+    pub content: Box<Block>,
 }
 
 impl Section {
@@ -10,12 +11,12 @@ impl Section {
     pub fn from(hdr: SectionHeader, bin: &Vec<u8>) -> Section {
         Section { 
             hdr,
-            content: vec![]
+            content: Box::new(Block::RawDat(bin.clone())) 
         }
     }
 
     pub fn to_le(self) -> Vec<u8> {
-        return self.content
+        return self.content.to_bin(); 
     }
 }
 
