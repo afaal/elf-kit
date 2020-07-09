@@ -20,7 +20,7 @@ pub enum Phdr_type {
     // Currently we are dropping all foreign formats
     // This might not be optimal.
 }
-
+#[derive(Copy, Clone)]
 pub struct ProgramHeader {
     pub p_type: Phdr_type,
     flags: u32,

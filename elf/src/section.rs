@@ -1,6 +1,7 @@
 use crate::shdr::SectionHeader; 
 use crate::block::Block; 
 
+#[derive(Clone)]
 pub struct Section {
     pub hdr: SectionHeader,
     pub content: Box<Block>,

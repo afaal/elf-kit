@@ -1,3 +1,4 @@
+#![feature(vec_remove_item)]
 #![allow(warnings)]
 
 use std::fs;
@@ -208,25 +209,30 @@ impl Elf {
         // bin.extend(phdrs_blob); 
         // bin.extend(segment_blob); 
         // bin.extend(shdrs_blob); 
-
+        let mut i = 0; 
         for block in self.blocks {
             
             if let block::Block::Segment(s) = block {
-                println!("Segment [{:x}] ", s.phdr.offset); 
+                println!("{}.Segment |{:x}|[{:x}] ", i, s.phdr.offset, s.phdr.filesz); 
 
                 for s_block in s.blocks {
 
-                    if let block::Block::Section(sec) = s_block {
-                        println!("\t {}", sec.hdr.name); 
+                    if let block::Block::Segment(seg) = &s_block {
+                        println!("\t Segment |{:x}| [{:x}]", seg.phdr.offset, seg.phdr.filesz); 
                     }
 
-                }
+                    if let block::Block::Section(sec) = &s_block {
+                        println!("\t Section {} |{:x}| [{:x}]", sec.hdr.name, sec.hdr.offset, sec.hdr.size); 
+                    }
 
+                    if let block::Block::RawDat(rd) = &s_block {
+                        println!("\t RawBin [{}]", rd.len()); 
+                    }
+                }
 
             }
 
-        
-            
+            i += 1;  
         }
 
         // return bin;

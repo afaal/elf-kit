@@ -5,7 +5,7 @@ use crate::phdr::ProgramHeader;
 use crate::shdr::SectionHeader; 
 use crate::Section;
 use crate::block::Block; 
-
+#[derive(Clone)]
 pub struct Segment {
     // Either should be able not to be set
     pub phdr: ProgramHeader,
@@ -41,6 +41,16 @@ impl Segment {
     pub fn offset(&mut self, offset: usize) {
         self.phdr.offset = offset as u64; 
     }
+
+    pub fn contains(&self, seg: &Segment) -> bool{
+        
+        if self.phdr.offset <= seg.phdr.offset && seg.phdr.offset < self.phdr.offset+self.phdr.filesz {
+            return true; 
+        } 
+
+        return false; 
+    }
+
 }
 
 // bin: The loaded binary file
