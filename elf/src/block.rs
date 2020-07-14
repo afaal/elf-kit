@@ -3,6 +3,7 @@ use crate::Segment;
 use crate::Section; 
 use crate::phdr; 
 use crate::shdr; 
+use std::cmp::Ordering;
 
 
 #[derive(Clone)]
@@ -21,6 +22,36 @@ impl PartialEq for Block {
         }
 
         return false; 
+    }
+}
+
+impl PartialOrd for Block {
+ 
+    // Sorting the sections/segment blocks vectors:  vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
+
+    fn partial_cmp(&self, blk: &Block) -> Option<Ordering> {
+        
+        let a = match self {
+            Block::Segment(s) => s.phdr.offset,
+            Block::Section(s) => s.hdr.offset,
+            _ => return None
+        };
+        let b = match blk {
+            Block::Segment(s) => s.phdr.offset,
+            Block::Section(s) => s.hdr.offset,
+            _ => return None
+        };
+        
+
+        if a < b {
+            return Some(Ordering::Less); 
+        } else if a == b {
+            return Some(Ordering::Equal); 
+        } else {
+            return Some(Ordering::Greater); 
+        }
+
+        None
     }
 }
 
@@ -95,7 +126,6 @@ pub fn into_blocks(bin: Vec<u8>) -> crate::Result<Vec<Block>> {
     // }
     r_blocks = find_sections_narrowfit(&program_hdrs, &section_hdrs, &bin); 
     r_blocks = nest_segments(r_blocks, 0).iter().rev().cloned().collect(); 
-    
     // by the end we should end up with the root array only containing a few segments probably the load segments.
 
     // we need to store offsets for calculating placements. However these does not have to be used when generating the resulting binary.
@@ -139,8 +169,14 @@ fn nest_segments(mut blocks: Vec<Block>, mut idx: usize) -> Vec<Block> {
             is_added = true; 
             itm.phdr.offset = itm.phdr.offset - seg.phdr.offset; // relative segment offsets 
             seg.blocks.push(itmb.clone());  // we have to have clone here because we readd elements in is_added using which takes ownership
+            
+            // TODO: SHOULD PROBABLY BE MOVED - WE WILL END UP REORDERING THE VECTORS ALOT! 
+            seg.blocks.sort_by(|a, b| a.partial_cmp(b).unwrap()); 
+            
             break; // can only be contained within one segment
         }
+        
+        
     }
 
     // if we dont' add the element to another increment the index, so that we don't try to add it again
@@ -197,7 +233,7 @@ fn find_sections_narrowfit(program_hdrs: &Vec<crate::phdr::ProgramHeader>, secti
     
     for shdr in section_hdrs {
         let mut best_idx = 0xFFFFFFFF; 
-        let mut best_width = 0x99999999; 
+        let mut best_width = bin.len() as u64; 
         let s_start = shdr.offset;
         let s_end = (shdr.offset+shdr.size); 
         
@@ -234,7 +270,12 @@ fn find_sections_narrowfit(program_hdrs: &Vec<crate::phdr::ProgramHeader>, secti
         }
         // add section
         if best_idx == 0xFFFFFFFF {continue;}
-        blocks[best_idx].segment_mut().unwrap().blocks.push( Block::Section(Section::from(shdr.clone(), &bin[shdr.offset as usize..(shdr.offset+shdr.size) as usize].to_vec())) )
+
+        // the offset needs to be relative to the segment start
+        let mut new_shdr = shdr.clone();
+        new_shdr.offset = s_start - blocks[best_idx].segment().unwrap().phdr.offset; 
+
+        blocks[best_idx].segment_mut().unwrap().blocks.push( Block::Section(Section::from(new_shdr.clone(), &bin[shdr.offset as usize..(shdr.offset+shdr.size) as usize].to_vec())) )
     }   
 
     blocks
