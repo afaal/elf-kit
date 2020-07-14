@@ -171,9 +171,12 @@ fn find_sections(seg: &Segment, section_hdrs: &Vec<crate::shdr::SectionHeader>, 
                 let mut new_shdr = shdr.clone(); 
                 new_shdr.offset = s_start - c_start; 
                 
-                // THere is an overflow here - both /usr/bin/ls and /usr/bin/xxd fails at this point 
-                blocks.push(Block::Section(Section::from(new_shdr, &bin[s_start as usize..s_end as usize].to_vec())))           
-                
+                println!("{}", shdr.name); 
+                println!("{:x}:{:x}", s_start, s_end); 
+
+                // THere is an overflow here - both /usr/bin/ls and /usr/bin/xxd fails at this point this is due to the projected size of the allocation
+                // and not the actual file size. It's the .bss section causing this error and it doens't take up any space in the file thus we actually just parse an empty array
+                blocks.push(Block::Section(Section::from(new_shdr, &vec![])))           
             }  
             
         } else {
