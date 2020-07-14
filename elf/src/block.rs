@@ -127,8 +127,8 @@ fn nest_segments(mut blocks: Vec<Block>, mut idx: usize) -> Vec<Block> {
     if idx >= blocks.len() {return blocks}; 
 
 
-    let itmb = blocks.remove(idx); 
-    let itm = itmb.segment().unwrap(); 
+    let mut itmb = blocks.remove(idx); 
+    let mut itm = itmb.segment_mut().unwrap(); 
 
     let mut is_added = false; 
     // let itm = blocks.remove(idx).segment().unwrap(); 
@@ -138,6 +138,7 @@ fn nest_segments(mut blocks: Vec<Block>, mut idx: usize) -> Vec<Block> {
 
         if seg.contains(itm) {
             is_added = true; 
+            itm.phdr.offset = itm.phdr.offset - seg.phdr.offset; // relative segment offsets 
             seg.blocks.push(itmb.clone());  // we have to have clone here because we readd elements in is_added using which takes ownership
             break; // can only be contained within one segment
         }
