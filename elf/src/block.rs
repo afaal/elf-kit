@@ -95,7 +95,7 @@ pub fn into_blocks(bin: Vec<u8>) -> crate::Result<Vec<Block>> {
         r_blocks.push(Block::Segment(seg)); 
     }
     
-    r_blocks = nest_segments(r_blocks, 0); 
+    r_blocks = nest_segments(r_blocks, 0).iter().rev().cloned().collect(); 
     
     // by the end we should end up with the root array only containing a few segments probably the load segments.
 

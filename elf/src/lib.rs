@@ -219,6 +219,17 @@ impl Elf {
 
                     if let block::Block::Segment(seg) = &s_block {
                         println!("\t Segment |{:x}| [{:x}]", seg.phdr.offset, seg.phdr.filesz); 
+
+                        for seg_block in &seg.blocks {
+                            if let block::Block::Section(sec) = &seg_block {
+                                println!("\t\t Section {} |{:x}| [{:x}]", sec.hdr.name, sec.hdr.offset, sec.hdr.size); 
+                            }
+        
+                            if let block::Block::RawDat(rd) = &seg_block {
+                                println!("\t\t RawBin [{}]", rd.len()); 
+                            }
+                        }
+                                    
                     }
 
                     if let block::Block::Section(sec) = &s_block {
@@ -229,12 +240,12 @@ impl Elf {
                         println!("\t RawBin [{}]", rd.len()); 
                     }
                 }
+            
 
+                i += 1;  
             }
 
-            i += 1;  
         }
-
         // return bin;
         vec![] 
     }
