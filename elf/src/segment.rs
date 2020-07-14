@@ -44,7 +44,7 @@ impl Segment {
 
     pub fn contains(&self, seg: &Segment) -> bool{
         
-        if self.phdr.offset <= seg.phdr.offset && seg.phdr.offset < self.phdr.offset+self.phdr.filesz {
+        if self.phdr.offset <= seg.phdr.offset && seg.phdr.offset + seg.phdr.filesz < self.phdr.offset+self.phdr.filesz {
             return true; 
         } 
 
