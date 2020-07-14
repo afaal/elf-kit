@@ -68,32 +68,32 @@ pub fn into_blocks(bin: Vec<u8>) -> crate::Result<Vec<Block>> {
     // parsed = []
     let mut r_blocks:Vec<Block> = vec![]; 
 
-    // Loop through each programheader (segments)
-    for phdr in program_hdrs {
-        let mut seg = Segment {
-            phdr,
-            blocks: vec![]
-        };
+    // // Loop through each programheader (segments)
+    // for phdr in program_hdrs {
+    //     let mut seg = Segment {
+    //         phdr,
+    //         blocks: vec![]
+    //     };
         
 
-        // Break programheader into  section blocks and rawData blocks (if any)
-        let c_start = &seg.phdr.offset; 
-        let c_end = (&seg.phdr.offset+&seg.phdr.filesz); 
+    //     // Break programheader into  section blocks and rawData blocks (if any)
+    //     let c_start = &seg.phdr.offset; 
+    //     let c_end = (&seg.phdr.offset+&seg.phdr.filesz); 
 
-        seg.blocks.extend(find_sections(&seg, &section_hdrs, &bin)); 
+    //     seg.blocks.extend(find_sections(&seg, &section_hdrs, &bin)); 
         
-        // fill in remaining raw data blocks 
+    //     // fill in remaining raw data blocks 
         
-        // fill_raw_data_block(&mut blocks, phdr.filesz); 
-        // if already parsed programheaders blocks contains this (check offsets)
-            // inject this segment block into that (placement in segment blocks is offset dependent)
-        // else if already parsed programheader blocks is child of this (check offsets)
-            // injest that programheader block into this  (placement in segment blocks is offset dependent)
+    //     // fill_raw_data_block(&mut blocks, phdr.filesz); 
+    //     // if already parsed programheaders blocks contains this (check offsets)
+    //         // inject this segment block into that (placement in segment blocks is offset dependent)
+    //     // else if already parsed programheader blocks is child of this (check offsets)
+    //         // injest that programheader block into this  (placement in segment blocks is offset dependent)
         
-        // add to parsed
-        r_blocks.push(Block::Segment(seg)); 
-    }
-    
+    //     // add to parsed
+    //     r_blocks.push(Block::Segment(seg)); 
+    // }
+    r_blocks = find_sections_narrowfit(&program_hdrs, &section_hdrs, &bin); 
     r_blocks = nest_segments(r_blocks, 0).iter().rev().cloned().collect(); 
     
     // by the end we should end up with the root array only containing a few segments probably the load segments.
@@ -189,4 +189,77 @@ fn find_sections(seg: &Segment, section_hdrs: &Vec<crate::shdr::SectionHeader>, 
     }
 
     blocks
+}
+
+// this can only be done when there is a sections header table
+fn find_sections_narrowfit(program_hdrs: &Vec<crate::phdr::ProgramHeader>, section_hdrs: &Vec<crate::shdr::SectionHeader>, bin: &Vec<u8> ) -> Vec<Block> {
+    let mut blocks = init_segments(bin).expect("Failed to parse segments"); 
+    
+    for shdr in section_hdrs {
+        let mut best_idx = 0xFFFFFFFF; 
+        let mut best_width = 0x99999999; 
+        let s_start = shdr.offset;
+        let s_end = (shdr.offset+shdr.size); 
+        
+        for (idx, blk) in blocks.iter().enumerate() {
+
+            let seg = blk.segment().unwrap(); 
+            let c_start = seg.phdr.offset; 
+            let c_end = (seg.phdr.offset+seg.phdr.filesz); 
+
+
+            let p_width = seg.phdr.offset+seg.phdr.filesz; 
+
+              
+            if let shdr::Shdr_type::NOBITS = shdr.sh_type {
+                if s_start > c_start && s_start <= c_end {
+                    
+                    if p_width < best_width {
+                        best_idx=idx; 
+                        best_width=p_width; 
+                    }
+
+                }  
+                
+            } else {
+                if s_start >= c_start && s_start < c_end {
+                         
+                    if p_width < best_width {
+                        best_idx=idx; 
+                        best_width=p_width; 
+                    }  
+                } 
+            }
+
+        }
+        // add section
+        if best_idx == 0xFFFFFFFF {continue;}
+        blocks[best_idx].segment_mut().unwrap().blocks.push( Block::Section(Section::from(shdr.clone(), &bin[shdr.offset as usize..(shdr.offset+shdr.size) as usize].to_vec())) )
+    }   
+
+    blocks
+}
+
+fn init_segments(bin: &Vec<u8>) -> crate::Result<Vec<Block>> {
+    let shstrndx = LittleEndian::read_u16(&bin[0x3E..0x40]); 
+    let program_hdrs = phdr::parse_program_header(&bin)?;
+    let section_hdrs = shdr::parse_section_header(&bin, shstrndx)?; 
+
+    let mut r_blocks:Vec<Block> = vec![]; 
+
+    // Loop through each programheader (segments)
+    for phdr in program_hdrs {
+        let mut seg = Segment {
+            phdr,
+            blocks: vec![]
+        };
+
+        // Break programheader into  section blocks and rawData blocks (if any)
+        let c_start = &seg.phdr.offset; 
+        let c_end = (&seg.phdr.offset+&seg.phdr.filesz); 
+
+        r_blocks.push(Block::Segment(seg)); 
+    }
+    
+    return Ok(r_blocks) 
 }
