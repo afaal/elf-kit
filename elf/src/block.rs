@@ -5,7 +5,6 @@ use crate::phdr;
 use crate::shdr; 
 
 
-
 #[derive(Clone)]
 pub enum Block {
     Segment(crate::Segment),
@@ -154,7 +153,6 @@ fn nest_segments(mut blocks: Vec<Block>, mut idx: usize) -> Vec<Block> {
     return nest_segments(blocks, idx);
 }
 
-
 fn find_sections(seg: &Segment, section_hdrs: &Vec<crate::shdr::SectionHeader>, bin: &Vec<u8> ) -> Vec<Block> {
     let mut blocks = vec![]; 
     
@@ -173,6 +171,7 @@ fn find_sections(seg: &Segment, section_hdrs: &Vec<crate::shdr::SectionHeader>, 
                 let mut new_shdr = shdr.clone(); 
                 new_shdr.offset = s_start - c_start; 
                 
+                // THere is an overflow here - both /usr/bin/ls and /usr/bin/xxd fails at this point 
                 blocks.push(Block::Section(Section::from(new_shdr, &bin[s_start as usize..s_end as usize].to_vec())))           
                 
             }  
