@@ -1,0 +1,4 @@
+- Are we padding the end of a segment with rawdat? 
+- Add sections to the end of the file 
+- Rewrite program headers / elf header
+- 

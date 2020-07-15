@@ -104,7 +104,6 @@ pub fn into_blocks(bin: Vec<u8>) -> crate::Result<Vec<Block>> {
 fn fill_raw_data_block(segment: &mut Segment, bin: &Vec<u8>, segment_offset: usize) -> crate::Result<()> {
     let mut new_blocks:Vec<Block> = vec![]; 
     let mut offset = 0; 
-    println!("IN SEGMENT {:x}", segment.phdr.offset); 
 
     if segment.blocks.len() == 0 && segment.phdr.filesz != 0 {
         new_blocks.push( Block::RawDat( bin[segment_offset as usize .. segment_offset+segment.phdr.filesz as usize].to_vec() ) );            
@@ -122,7 +121,6 @@ fn fill_raw_data_block(segment: &mut Segment, bin: &Vec<u8>, segment_offset: usi
             // fill the gap up to start we might need to substract one from start to not include the beginning of the coming segment
             // according to tests the end in not inclusive. 
             new_blocks.push( Block::RawDat( bin[segment_offset+offset as usize .. segment_offset+start as usize].to_vec() ) );            
-            println!("ADDED RAW DATABLOCK");
         }
         
         if let Block::Segment(s) = block {

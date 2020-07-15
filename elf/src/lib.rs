@@ -176,12 +176,12 @@ impl Elf {
     pub fn to_bin(mut self) -> Vec<u8> {
         // THIS IS DEBUG CODE USED FOR DISPLAYING THE BLOCK TREE OF THE PARSED BINARY
         let mut i = 0; 
-        for block in self.blocks {
+        for block in &self.blocks {
             
             if let block::Block::Segment(s) = block {
                 println!("{}.Segment |{:x}|[{:x}] ", i, s.phdr.offset, s.phdr.filesz); 
 
-                for s_block in s.blocks {
+                for s_block in &s.blocks {
 
                     if let block::Block::Segment(seg) = &s_block {
                         println!("\t Segment |{:x}| [{:x}]", seg.phdr.offset, seg.phdr.filesz); 
@@ -212,8 +212,15 @@ impl Elf {
             }
 
         }
-        // return bin;
-        vec![] 
+
+
+        let mut bin =  vec![]; 
+
+        for blk in self.blocks {
+            bin.extend(blk.to_bin()); 
+        }
+
+        return bin;
     }
 
     pub fn write_file(self, path: &str) -> Result<()> {
