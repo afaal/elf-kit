@@ -106,7 +106,7 @@ fn fill_raw_data_block(segment: &mut Segment, bin: &Vec<u8>, segment_offset: usi
     let mut offset = 0; 
     println!("IN SEGMENT {:x}", segment.phdr.offset); 
 
-    if segment.blocks.len() == 0 {
+    if segment.blocks.len() == 0 && segment.phdr.filesz != 0 {
         new_blocks.push( Block::RawDat( bin[segment_offset as usize .. segment_offset+segment.phdr.filesz as usize].to_vec() ) );            
     }
 
