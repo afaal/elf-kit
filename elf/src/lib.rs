@@ -174,41 +174,7 @@ pub struct Elf {
 impl Elf {
     // return the elf as a binary file
     pub fn to_bin(mut self) -> Vec<u8> {
-        // let mut bin = vec![];
-
-        // // bin.resize(segment::get_segments_size(&self.segments) as usize, 0);
-
-        
-        // // We need to create a new shstrndx using the segments 
-
-
-        // // get segment blob
-        // // TODO: We need to take nested segments into account.
-        // let segment_blob = segment::get_segments_blob(&self.segments);  
-
-        // // TODO: We need to update the entrypoint
-        
-
-        // // TODO: calculate the elf header size, program header and section headers.
-        // let ehdr_offset = 0x0; 
-        // let phdr_offset = 0x40; 
-        // let segment_offset = phdr_offset+segment::phdrs_size(&self.segments);
-        // let shdr_offset = segment_offset+segment_blob.len(); 
-
-        // // TODO: Set the offsets to be file offsets instead of local offsets
-        // self.header.phdr_offset = phdr_offset as u64; 
-        // self.header.phdr_num = self.segments.len() as u16; 
-        // self.header.shdr_offset = shdr_offset as u64; 
-        // self.header.shdr_num = segment::shdrs_len(&self.segments) as u16; 
-
-        // let phdrs_blob = segment::get_phdrs_blob(&self.segments, segment_offset);         
-        // let shdrs_blob = segment::get_shdrs_blob(&self.segments);         
-        // let ehdr_blob = self.header.to_le(); 
-
-        // bin.extend(ehdr_blob); 
-        // bin.extend(phdrs_blob); 
-        // bin.extend(segment_blob); 
-        // bin.extend(shdrs_blob); 
+        // THIS IS DEBUG CODE USED FOR DISPLAYING THE BLOCK TREE OF THE PARSED BINARY
         let mut i = 0; 
         for block in self.blocks {
             
@@ -226,7 +192,7 @@ impl Elf {
                             }
         
                             if let block::Block::RawDat(rd) = &seg_block {
-                                println!("\t\t RawBin [{}]", rd.len()); 
+                                println!("\t\t RawBin [{:x}]", rd.len()); 
                             }
                         }
                                     
@@ -237,7 +203,7 @@ impl Elf {
                     }
 
                     if let block::Block::RawDat(rd) = &s_block {
-                        println!("\t RawBin [{}]", rd.len()); 
+                        println!("\t RawBin [{:x}]", rd.len()); 
                     }
                 }
             

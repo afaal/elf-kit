@@ -85,70 +85,57 @@ pub fn into_blocks(bin: Vec<u8>) -> crate::Result<Vec<Block>> {
     let program_hdrs = phdr::parse_program_header(&bin)?;
     let section_hdrs = shdr::parse_section_header(&bin, shstrndx)?; 
     
-    // TODO: fix offset calculation. We are currently adding segments after eachother, but some might be nested within others. 
-    // ALso there is really no need for this calculation. As we simply need to determine where the segments begin, and then 
-    // subtract that from their current offset, then we get an offset relative to the beginning of the segments blob.
-    
-    // TODO: exec and libs differently
-    
-    // [Injest/inject]
-
-    // TODO: Should i nest segments first? The same section is represented in two different segments .interp due to segment nesting 
-    // This is  probably needed otherwise we could end up having the same section appear in multiple segments. Is there a workaround? 
-    
-    // parsed = []
+  
     let mut r_blocks:Vec<Block> = vec![]; 
 
-    // // Loop through each programheader (segments)
-    // for phdr in program_hdrs {
-    //     let mut seg = Segment {
-    //         phdr,
-    //         blocks: vec![]
-    //     };
-        
-
-    //     // Break programheader into  section blocks and rawData blocks (if any)
-    //     let c_start = &seg.phdr.offset; 
-    //     let c_end = (&seg.phdr.offset+&seg.phdr.filesz); 
-
-    //     seg.blocks.extend(find_sections(&seg, &section_hdrs, &bin)); 
-        
-    //     // fill in remaining raw data blocks 
-        
-    //     // fill_raw_data_block(&mut blocks, phdr.filesz); 
-    //     // if already parsed programheaders blocks contains this (check offsets)
-    //         // inject this segment block into that (placement in segment blocks is offset dependent)
-    //     // else if already parsed programheader blocks is child of this (check offsets)
-    //         // injest that programheader block into this  (placement in segment blocks is offset dependent)
-        
-    //     // add to parsed
-    //     r_blocks.push(Block::Segment(seg)); 
-    // }
     r_blocks = find_sections_narrowfit(&program_hdrs, &section_hdrs, &bin); 
     r_blocks = nest_segments(r_blocks, 0).iter().rev().cloned().collect(); 
-    // by the end we should end up with the root array only containing a few segments probably the load segments.
+    
+    for r in &mut r_blocks {
+        let mut seg = r.segment_mut().unwrap(); 
 
-    // we need to store offsets for calculating placements. However these does not have to be used when generating the resulting binary.
+        fill_raw_data_block(seg, &bin, seg.phdr.offset as usize);
+    }
 
     return Ok(r_blocks) 
 }
 
 // UNFINISHED
-fn fill_raw_data_block(blocks: &mut Vec<Block>, size: u64) -> Vec<Block> {
+fn fill_raw_data_block(segment: &mut Segment, bin: &Vec<u8>, segment_offset: usize) -> crate::Result<()> {
+    let mut new_blocks:Vec<Block> = vec![]; 
+    let mut offset = 0; 
+    println!("IN SEGMENT {:x}", segment.phdr.offset); 
 
-    let mut ranges:Vec<(u64,u64)> = vec![(0, size)]; 
-        // fill in remaining raw data blocks 
-    for block in blocks {
-        if let Block::Section(sec) = block {
-            for (low, high) in &ranges {
-                if sec.hdr.offset >= *low && sec.hdr.offset <= *high {
-                    
-                }
-            }
-        }
+    if segment.blocks.len() == 0 {
+        new_blocks.push( Block::RawDat( bin[segment_offset as usize .. segment_offset+segment.phdr.filesz as usize].to_vec() ) );            
     }
 
-    vec![]
+    // fill in remaining raw data blocks 
+    for block in &mut segment.blocks {
+        let (start, end) = match &block {
+            Block::Segment(s) => (s.phdr.offset, s.phdr.offset+s.phdr.filesz),
+            Block::Section(s) => (s.hdr.offset, s.hdr.offset+s.hdr.size),
+            _ => return Err(crate::ParsingError::ParsingError)
+        }; 
+
+        if offset < start {
+            // fill the gap up to start we might need to substract one from start to not include the beginning of the coming segment
+            // according to tests the end in not inclusive. 
+            new_blocks.push( Block::RawDat( bin[segment_offset+offset as usize .. segment_offset+start as usize].to_vec() ) );            
+            println!("ADDED RAW DATABLOCK");
+        }
+        
+        if let Block::Segment(s) = block {
+            fill_raw_data_block(s, &bin, segment_offset+start as usize); 
+        }
+
+        new_blocks.push(block.clone()); 
+        offset = end
+    }
+
+    segment.blocks = new_blocks; 
+
+    Ok(())
 }
 
 // nest segment and place segment in the correct location relative to other blocks.
