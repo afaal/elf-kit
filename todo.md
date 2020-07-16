@@ -18,3 +18,9 @@ This is a tool to modify existing binaries. The main purpose of this tool is tro
 # ELF.inject
 
 This is a tool designed to modify processes.
+
+
+
+
+# Resources 
+1. https://en.wikipedia.org/wiki/Executable_and_Linkable_Format
