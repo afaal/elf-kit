@@ -216,17 +216,25 @@ impl Elf {
         let shdrs = block::generate_section_headers(&self.blocks, 0); 
         // TODO generate program headers  - a phdr segment with a raw data block is created in the beginning to hold the program headers 
 
+    
+        // modify the elf header with all the required locations 
         self.header.shdr_offset = (block::size(&self.blocks)) as u64; // A raw dat segment it placed in the beginning to hold the elf header.  
         self.header.shdr_num = shdrs.len() as u16; 
-        // modify the elf header with all the required locations 
-        
+    
+        // update elf header block
+        let elf_hdr_inner = block::get_elfhdr_inner(&mut self.blocks).unwrap(); 
+        *elf_hdr_inner = self.header.to_le(); 
+
+
+        let phdr_inner = block::get_phdr_inner(&mut self.blocks).unwrap(); 
+        // todo generate and set program header inner
+
+
         // Assemble binary
         let mut bin =  vec![]; 
         for blk in self.blocks {
             bin.extend(blk.to_bin()); 
         }
-        // insert the elf header - this is a hack
-        bin.splice(0..0, self.header.to_le()); 
 
         for shd in shdrs {
             bin.extend(shd.to_le()); 
