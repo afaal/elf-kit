@@ -21,7 +21,8 @@ use section::Section;
 #[derive(Debug, Clone)]
 pub enum ParsingError {
     NotElf,
-    ParsingError
+    ParsingError,
+    Missing
 }
 
 type Result<T> = std::result::Result<T, ParsingError>; 

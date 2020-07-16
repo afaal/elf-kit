@@ -79,6 +79,13 @@ impl Block {
         }
     }
 
+    pub fn raw_dat_mut(&mut self) -> crate::Result<&mut Vec<u8>> {
+        match self {
+            Block::RawDat(s) => Ok(s),
+            _ =>  Err(crate::ParsingError::ParsingError)
+        }
+    }
+
     pub fn segment_mut(&mut self) -> crate::Result<&mut crate::Segment> {
         match self {
             Block::Segment(s) => Ok(s),
@@ -345,3 +352,47 @@ pub fn size(blocks: &Vec<Block>) -> usize {
     len
 }
 
+pub fn get_phdr_inner(blocks: &mut Vec<Block>) -> crate::Result<&mut Vec<u8>> {
+    for blk in blocks {
+        match blk {
+            Block::Segment(s) => { 
+
+                if let crate::phdr::Phdr_type::PHDR = s.phdr.p_type {
+                    if s.blocks.len() > 0 {
+                        return Ok(s.blocks[0].raw_dat_mut().unwrap()); 
+                    } else {
+                        return Err(crate::ParsingError::ParsingError); 
+                    }
+                }
+
+                if let Ok(seg) = get_phdr_inner(&mut s.blocks) {
+                    if s.blocks.len() > 0 {
+                        return s.blocks[0].raw_dat_mut()
+                    } else {
+                        return Err(crate::ParsingError::ParsingError); 
+                    }
+                }
+
+            }, 
+            _ => {}
+        }
+    }
+
+    Err(crate::ParsingError::Missing)
+} 
+
+
+pub fn get_elfhdr_inner(blocks: &mut Vec<Block>) -> crate::Result<&mut Vec<u8>> {
+    let firstelem = blocks[0].segment_mut().unwrap(); 
+    
+    for blk in &mut firstelem.blocks {
+        match blk {
+            Block::RawDat(s) => {
+                return Ok(s); 
+            },
+            _ => {}
+        }
+    }
+
+    Err(crate::ParsingError::Missing)
+} 
