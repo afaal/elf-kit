@@ -72,6 +72,13 @@ impl Block {
         }
     }
 
+    pub fn raw_dat(&self) -> crate::Result<&Vec<u8>> {
+        match self {
+            Block::RawDat(s) => Ok(s),
+            _ =>  Err(crate::ParsingError::ParsingError)
+        }
+    }
+
     pub fn segment_mut(&mut self) -> crate::Result<&mut crate::Segment> {
         match self {
             Block::Segment(s) => Ok(s),
@@ -289,3 +296,33 @@ fn init_segments(bin: &Vec<u8>) -> crate::Result<Vec<Block>> {
     
     return Ok(r_blocks) 
 }
+
+pub fn generate_section_headers(blocks: &Vec<Block>, mut offset: usize) -> Vec<crate::shdr::SectionHeader> {
+    let mut sections_headers = vec![]; 
+    
+    for blk in blocks {
+        match blk {
+            Block::Segment(s) => { 
+                sections_headers.extend(generate_section_headers(&s.blocks, offset)); 
+                offset += s.len(); 
+                // calculate the size of the segment
+            }, 
+            Block::Section(s) => {
+                let mut shdr = s.hdr.clone(); 
+                shdr.offset = offset as u64;
+                sections_headers.push(shdr); 
+                offset += s.content.raw_dat().unwrap().len(); 
+            },
+            Block::RawDat(s) => {
+                offset += s.len(); 
+            }
+            Block::Padding(s) => {
+                offset += s.len(); 
+            }
+        }
+    }
+
+    return sections_headers; 
+}
+
+

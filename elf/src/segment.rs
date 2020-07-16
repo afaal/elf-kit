@@ -51,6 +51,30 @@ impl Segment {
         return false; 
     }
 
+    // calculate the size of the segment
+    pub fn len(&self) -> usize {
+        let mut len = 0; 
+
+        for blk in &self.blocks {
+            match blk {
+                Block::Segment(s) => { 
+                    len += s.len(); 
+                    // calculate the size of the segment
+                }, 
+                Block::Section(s) => {
+                    len += s.content.raw_dat().unwrap().len(); 
+                },
+                Block::RawDat(s) => {
+                    len += s.len(); 
+                }
+                Block::Padding(s) => {
+                    len += s.len(); 
+                }
+            }
+        }
+        return len; 
+    }
+
 }
 
 // bin: The loaded binary file

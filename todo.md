@@ -8,6 +8,7 @@ ELF parser is the first stage in ELF.inject. It's goal is to tokenize an ELF and
 - [ ] Add sections to the end of the file 
 - [ ] Rewrite program headers / elf header
 - [ ] Relocate entry point
+- [ ] find_sections_narrowfit() only works with binaries having a sections table, a backup should be made
 
 # ELF.patcher
 

@@ -175,51 +175,58 @@ impl Elf {
     // return the elf as a binary file
     pub fn to_bin(mut self) -> Vec<u8> {
         // THIS IS DEBUG CODE USED FOR DISPLAYING THE BLOCK TREE OF THE PARSED BINARY
-        let mut i = 0; 
-        for block in &self.blocks {
+        // let mut i = 0; 
+        // for block in &self.blocks {
             
-            if let block::Block::Segment(s) = block {
-                println!("{}.Segment |{:x}|[{:x}] ", i, s.phdr.offset, s.phdr.filesz); 
+        //     if let block::Block::Segment(s) = block {
+        //         println!("{}.Segment |{:x}|[{:x}] ", i, s.phdr.offset, s.phdr.filesz); 
 
-                for s_block in &s.blocks {
+        //         for s_block in &s.blocks {
 
-                    if let block::Block::Segment(seg) = &s_block {
-                        println!("\t Segment |{:x}| [{:x}]", seg.phdr.offset, seg.phdr.filesz); 
+        //             if let block::Block::Segment(seg) = &s_block {
+        //                 println!("\t Segment |{:x}| [{:x}]", seg.phdr.offset, seg.phdr.filesz); 
 
-                        for seg_block in &seg.blocks {
-                            if let block::Block::Section(sec) = &seg_block {
-                                println!("\t\t Section {} |{:x}| [{:x}]", sec.hdr.name, sec.hdr.offset, sec.hdr.size); 
-                            }
+        //                 for seg_block in &seg.blocks {
+        //                     if let block::Block::Section(sec) = &seg_block {
+        //                         println!("\t\t Section {} |{:x}| [{:x}]", sec.hdr.name, sec.hdr.offset, sec.hdr.size); 
+        //                     }
         
-                            if let block::Block::RawDat(rd) = &seg_block {
-                                println!("\t\t RawBin [{:x}]", rd.len()); 
-                            }
-                        }
+        //                     if let block::Block::RawDat(rd) = &seg_block {
+        //                         println!("\t\t RawBin [{:x}]", rd.len()); 
+        //                     }
+        //                 }
                                     
-                    }
+        //             }
 
-                    if let block::Block::Section(sec) = &s_block {
-                        println!("\t Section {} |{:x}| [{:x}]", sec.hdr.name, sec.hdr.offset, sec.hdr.size); 
-                    }
+        //             if let block::Block::Section(sec) = &s_block {
+        //                 println!("\t Section {} |{:x}| [{:x}]", sec.hdr.name, sec.hdr.offset, sec.hdr.size); 
+        //             }
 
-                    if let block::Block::RawDat(rd) = &s_block {
-                        println!("\t RawBin [{:x}]", rd.len()); 
-                    }
-                }
+        //             if let block::Block::RawDat(rd) = &s_block {
+        //                 println!("\t RawBin [{:x}]", rd.len()); 
+        //             }
+        //         }
             
 
-                i += 1;  
-            }
+        //         i += 1;  
+        //     }
 
-        }
-
-
+        // }
         let mut bin =  vec![]; 
+
+        let shdrs = block::generate_section_headers(&self.blocks, 0); 
 
         for blk in self.blocks {
             bin.extend(blk.to_bin()); 
         }
-
+        
+        let shdr_offset = bin.len(); // should be inserted into the elf_header
+        
+        for shd in shdrs {
+            bin.extend(shd.to_le()); 
+        }
+        
+        
         return bin;
     }
 
