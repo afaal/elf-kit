@@ -85,6 +85,16 @@ impl Block {
             _ =>  Err(crate::ParsingError::ParsingError)
         }
     }
+
+    pub fn size(&self) -> usize {
+        match self {
+            Block::Segment(s) => s.len(), 
+            Block::Section(s) => s.len(),
+            Block::RawDat(s) => s.len(),
+            Block::Padding(s) => s.len(),
+        }
+    }
+
 }
 
 pub fn into_blocks(bin: Vec<u8>) -> crate::Result<Vec<Block>> {
@@ -325,4 +335,13 @@ pub fn generate_section_headers(blocks: &Vec<Block>, mut offset: usize) -> Vec<c
     return sections_headers; 
 }
 
+pub fn size(blocks: &Vec<Block>) -> usize {
+    let mut len = 0;
+
+    for blk in blocks {
+        len += blk.size(); 
+    }
+
+    len
+}
 

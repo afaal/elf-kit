@@ -4,9 +4,10 @@ This repo will undergo three stages of development. All described in the coming 
 
 ELF parser is the first stage in ELF.inject. It's goal is to tokenize an ELF and be able to dynamically put it back together. This will make the addition of new segments/sections/raw binary seamless.
 
-- [ ] Are we padding the end of a segment with rawdat? 
+- [ ] Are we padding the end of a segment with rawdat? Alignment isn't taken into account. 
 - [x] Add sections to the end of the file 
-- [ ] Rewrite program headers / elf header to reflect changes to locations of sections and segments 
+- [ ] Rewrite program headers / elf header to reflect changes to locations of sections and segments
+- [ ] Replace blocks where header and program header would be located with the updated structures. 
 - [ ] Relocate entry point
 - [ ] find_sections_narrowfit() only works with binaries having a sections table, a backup should be made
 

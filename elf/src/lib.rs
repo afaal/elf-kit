@@ -210,23 +210,26 @@ impl Elf {
 
         //         i += 1;  
         //     }
-
         // }
-        let mut bin =  vec![]; 
 
         let shdrs = block::generate_section_headers(&self.blocks, 0); 
+        // TODO generate program headers  - a phdr segment with a raw data block is created in the beginning to hold the program headers 
 
+        self.header.shdr_offset = (block::size(&self.blocks)) as u64; // A raw dat segment it placed in the beginning to hold the elf header.  
+        self.header.shdr_num = shdrs.len() as u16; 
+        // modify the elf header with all the required locations 
+        
+        // Assemble binary
+        let mut bin =  vec![]; 
         for blk in self.blocks {
             bin.extend(blk.to_bin()); 
         }
-        
-        let shdr_offset = bin.len(); // should be inserted into the elf_header
-        
+        // insert the elf header - this is a hack
+        bin.splice(0..0, self.header.to_le()); 
+
         for shd in shdrs {
             bin.extend(shd.to_le()); 
         }
-        
-        
         return bin;
     }
 

@@ -16,6 +16,10 @@ impl Section {
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.content.raw_dat().unwrap().len()
+    }
+
     pub fn to_le(self) -> Vec<u8> {
         return self.content.to_bin(); 
     }
