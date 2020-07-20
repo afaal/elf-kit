@@ -18,7 +18,7 @@ impl PartialEq for Block {
     fn eq(&self, other: &Self) -> bool {
         
         if let (Block::Segment(s), Block::Segment(t)) = (self, other) {
-            return s.phdr.offset == t.phdr.offset && s.phdr.filesz == s.phdr.filesz; 
+            return s.phdr.offset == t.phdr.offset && s.phdr.filesz == t.phdr.filesz; 
         }
 
         return false; 
@@ -113,13 +113,13 @@ pub fn into_blocks(bin: Vec<u8>) -> crate::Result<Vec<Block>> {
     let mut r_blocks:Vec<Block> = vec![]; 
 
     r_blocks = find_sections_narrowfit(&program_hdrs, &section_hdrs, &bin); 
-    r_blocks = nest_segments(r_blocks, 0).iter().rev().cloned().collect(); 
+    r_blocks = nest_segments(r_blocks); // .iter().rev().cloned().collect(); 
     
-    for r in &mut r_blocks {
-        let mut seg = r.segment_mut().unwrap(); 
+    // for r in &mut r_blocks {
+    //     let mut seg = r.segment_mut().unwrap(); 
 
-        fill_raw_data_block(seg, &bin, seg.phdr.offset as usize);
-    }
+    //     fill_raw_data_block(seg, &bin, seg.phdr.offset as usize);
+    // }
 
     return Ok(r_blocks) 
 }
@@ -161,41 +161,40 @@ fn fill_raw_data_block(segment: &mut Segment, bin: &Vec<u8>, segment_offset: usi
 }
 
 // nest segment and place segment in the correct location relative to other blocks.
-fn nest_segments(mut blocks: Vec<Block>, mut idx: usize) -> Vec<Block> {
-    if idx >= blocks.len() {return blocks}; 
+// Todo: this doesn't account for double nested segments
+fn nest_segments(mut blocks: Vec<Block>) -> Vec<Block> {
+    // if idx >= blocks.len() {return blocks}; 
 
+    // let mut itmb = blocks.remove(idx); 
+    // let mut itm = itmb.segment_mut().unwrap(); 
 
-    let mut itmb = blocks.remove(idx); 
-    let mut itm = itmb.segment_mut().unwrap(); 
+    // let mut is_added = false; 
+    // // let itm = blocks.remove(idx).segment().unwrap(); 
 
-    let mut is_added = false; 
-    // let itm = blocks.remove(idx).segment().unwrap(); 
+    // for block in &mut blocks {
+    //     let mut seg = block.segment_mut().unwrap(); 
 
-    for block in &mut blocks {
-        let mut seg = block.segment_mut().unwrap(); 
-
-        if seg.contains(itm) {
-            is_added = true; 
-            itm.phdr.offset = itm.phdr.offset - seg.phdr.offset; // relative segment offsets 
-            seg.blocks.push(itmb.clone());  // we have to have clone here because we readd elements in is_added using which takes ownership
+    //     if seg.contains(itm) {
+    //         is_added = true; 
+    //         itm.phdr.offset = itm.phdr.offset - seg.phdr.offset; // relative segment offsets 
+    //         seg.blocks.push(itmb.clone());  // we have to have clone here because we readd elements in is_added using which takes ownership
             
-            // TODO: SHOULD PROBABLY BE MOVED - WE WILL END UP REORDERING THE VECTORS ALOT! 
-            seg.blocks.sort_by(|a, b| a.partial_cmp(b).unwrap()); 
+    //         // TODO: SHOULD PROBABLY BE MOVED - WE WILL END UP REORDERING THE VECTORS ALOT! 
+    //         seg.blocks.sort_by(|a, b| a.partial_cmp(b).unwrap()); 
             
-            break; // can only be contained within one segment
-        }
-        
-        
-    }
+    //         break; // can only be contained within one segment
+    //     }
+    // }
 
-    // if we dont' add the element to another increment the index, so that we don't try to add it again
-    if !is_added { 
-        blocks.splice(0..0, [itmb].iter().cloned()); 
-        idx+=1; 
-    }
+    // // if we dont' add the element to another increment the index, so that we don't try to add it again
+    // if !is_added { 
+    //     blocks.splice(0..0, [itmb].iter().cloned()); 
+    //     idx+=1; 
+    // }
 
 
-    return nest_segments(blocks, idx);
+    // return nest_segments(blocks, idx);
+    return blocks;
 }
 
 fn find_sections(seg: &Segment, section_hdrs: &Vec<crate::shdr::SectionHeader>, bin: &Vec<u8> ) -> Vec<Block> {
@@ -246,6 +245,7 @@ fn find_sections_narrowfit(program_hdrs: &Vec<crate::phdr::ProgramHeader>, secti
         let s_start = shdr.offset;
         let s_end = (shdr.offset+shdr.size); 
         
+        // foreach segment
         for (idx, blk) in blocks.iter().enumerate() {
 
             let seg = blk.segment().unwrap(); 
@@ -253,7 +253,7 @@ fn find_sections_narrowfit(program_hdrs: &Vec<crate::phdr::ProgramHeader>, secti
             let c_end = (seg.phdr.offset+seg.phdr.filesz); 
 
 
-            let p_width = seg.phdr.offset+seg.phdr.filesz; 
+            let p_width = seg.phdr.filesz;  
 
               
             if let shdr::Shdr_type::NOBITS = shdr.sh_type {
@@ -327,8 +327,9 @@ pub fn generate_section_headers(blocks: &Vec<Block>, mut offset: usize) -> Vec<c
             Block::Section(s) => {
                 let mut shdr = s.hdr.clone(); 
                 shdr.offset = offset as u64;
+                shdr.size = s.len() as u64; 
                 sections_headers.push(shdr); 
-                offset += s.content.raw_dat().unwrap().len(); 
+                offset += s.len(); 
             },
             Block::RawDat(s) => {
                 offset += s.len(); 
@@ -352,6 +353,35 @@ pub fn size(blocks: &Vec<Block>) -> usize {
     len
 }
 
+pub fn generate_program_headers(blocks: &Vec<Block>, mut offset: usize) -> Vec<crate::phdr::ProgramHeader> {
+    let mut program_headers = vec![]; 
+    
+    for blk in blocks {
+        match blk {
+            Block::Segment(s) => { 
+                let mut phdr = s.phdr.clone(); 
+                phdr.offset = offset as u64; // phdr offset is currently a relative offset
+                program_headers.push(phdr); 
+                program_headers.extend(generate_program_headers(&s.blocks, offset)); 
+                offset += s.len();
+                println!("offset: {:x}", offset);
+                // calculate the size of the segment
+            }, 
+            Block::Section(s) => {
+                offset += s.len();
+            },
+            Block::RawDat(s) => {
+                offset += s.len();
+            }
+            Block::Padding(s) => {
+                offset += s.len();
+            }
+        }
+    }
+
+    return program_headers; 
+}
+
 pub fn get_phdr_inner(blocks: &mut Vec<Block>) -> crate::Result<&mut Vec<u8>> {
     for blk in blocks {
         match blk {
@@ -365,12 +395,15 @@ pub fn get_phdr_inner(blocks: &mut Vec<Block>) -> crate::Result<&mut Vec<u8>> {
                     }
                 }
 
-                if let Ok(seg) = get_phdr_inner(&mut s.blocks) {
-                    if s.blocks.len() > 0 {
-                        return s.blocks[0].raw_dat_mut()
-                    } else {
-                        return Err(crate::ParsingError::ParsingError); 
+                match get_phdr_inner(&mut s.blocks) {
+                    Ok(s) => return Ok(s),
+                    Err(s) => {
+                        match s {
+                            crate::ParsingError::Missing => continue,
+                            _ => return Err(crate::ParsingError::ParsingError)
+                        }
                     }
+
                 }
 
             }, 
@@ -380,7 +413,6 @@ pub fn get_phdr_inner(blocks: &mut Vec<Block>) -> crate::Result<&mut Vec<u8>> {
 
     Err(crate::ParsingError::Missing)
 } 
-
 
 pub fn get_elfhdr_inner(blocks: &mut Vec<Block>) -> crate::Result<&mut Vec<u8>> {
     let firstelem = blocks[0].segment_mut().unwrap(); 

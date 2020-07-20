@@ -175,70 +175,81 @@ pub struct Elf {
 impl Elf {
     // return the elf as a binary file
     pub fn to_bin(mut self) -> Vec<u8> {
+
+        let phdrs = block::generate_program_headers(&self.blocks, 0); 
+
+        for i in phdrs {
+            println!("offset: {:x}, filesz: {:x}", i.offset, i.filesz); 
+        }
+
         // THIS IS DEBUG CODE USED FOR DISPLAYING THE BLOCK TREE OF THE PARSED BINARY
-        // let mut i = 0; 
-        // for block in &self.blocks {
+        let mut i = 0; 
+        for block in &self.blocks {
             
-        //     if let block::Block::Segment(s) = block {
-        //         println!("{}.Segment |{:x}|[{:x}] ", i, s.phdr.offset, s.phdr.filesz); 
+            if let block::Block::Segment(s) = block {
+                println!("{}.Segment |{:x}|[{:x}] ", i, s.phdr.offset, s.phdr.filesz); 
 
-        //         for s_block in &s.blocks {
+                for s_block in &s.blocks {
 
-        //             if let block::Block::Segment(seg) = &s_block {
-        //                 println!("\t Segment |{:x}| [{:x}]", seg.phdr.offset, seg.phdr.filesz); 
+                    if let block::Block::Segment(seg) = &s_block {
+                        println!("\t Segment |{:x}| [{:x}]", seg.phdr.offset, seg.phdr.filesz); 
 
-        //                 for seg_block in &seg.blocks {
-        //                     if let block::Block::Section(sec) = &seg_block {
-        //                         println!("\t\t Section {} |{:x}| [{:x}]", sec.hdr.name, sec.hdr.offset, sec.hdr.size); 
-        //                     }
+                        for seg_block in &seg.blocks {
+                            if let block::Block::Segment(s) = &seg_block {
+                                println!("\t\t Segment |{:x}| [{:x}]", s.phdr.offset, s.phdr.filesz); 
+                            }
+
+                            if let block::Block::Section(sec) = &seg_block {
+                                println!("\t\t Section {} |{:x}| [{:x}]", sec.hdr.name, sec.hdr.offset, sec.hdr.size); 
+                            }
         
-        //                     if let block::Block::RawDat(rd) = &seg_block {
-        //                         println!("\t\t RawBin [{:x}]", rd.len()); 
-        //                     }
-        //                 }
+                            if let block::Block::RawDat(rd) = &seg_block {
+                                println!("\t\t RawBin [{:x}]", rd.len()); 
+                            }
+                        }
                                     
-        //             }
+                    }
 
-        //             if let block::Block::Section(sec) = &s_block {
-        //                 println!("\t Section {} |{:x}| [{:x}]", sec.hdr.name, sec.hdr.offset, sec.hdr.size); 
-        //             }
+                    if let block::Block::Section(sec) = &s_block {
+                        println!("\t Section {} |{:x}| [{:x}]", sec.hdr.name, sec.hdr.offset, sec.hdr.size); 
+                    }
 
-        //             if let block::Block::RawDat(rd) = &s_block {
-        //                 println!("\t RawBin [{:x}]", rd.len()); 
-        //             }
-        //         }
+                    if let block::Block::RawDat(rd) = &s_block {
+                        println!("\t RawBin [{:x}]", rd.len()); 
+                    }
+                }
             
 
-        //         i += 1;  
-        //     }
+                i += 1;  
+            }
+        }
+
+        // let shdrs = block::generate_section_headers(&self.blocks, 0); 
+        // // TODO generate program headers  - a phdr segment with a raw data block is created in the beginning to hold the program headers 
+
+    
+        // // modify the elf header with all the required locations 
+        // self.header.shdr_offset = (block::size(&self.blocks)) as u64; // A raw dat segment it placed in the beginning to hold the elf header.  
+        // self.header.shdr_num = shdrs.len() as u16; 
+    
+        // // update elf header block
+        // let elf_hdr_inner = block::get_elfhdr_inner(&mut self.blocks).unwrap(); 
+        // *elf_hdr_inner = self.header.to_le(); 
+
+
+        // let phdr_inner = block::get_phdr_inner(&mut self.blocks).unwrap(); 
+        // // todo generate and set program header inner
+
+
+        // // Assemble binary
+        let mut bin =  vec![]; 
+        // for blk in self.blocks {
+        //     bin.extend(blk.to_bin()); 
         // }
 
-        let shdrs = block::generate_section_headers(&self.blocks, 0); 
-        // TODO generate program headers  - a phdr segment with a raw data block is created in the beginning to hold the program headers 
-
-    
-        // modify the elf header with all the required locations 
-        self.header.shdr_offset = (block::size(&self.blocks)) as u64; // A raw dat segment it placed in the beginning to hold the elf header.  
-        self.header.shdr_num = shdrs.len() as u16; 
-    
-        // update elf header block
-        let elf_hdr_inner = block::get_elfhdr_inner(&mut self.blocks).unwrap(); 
-        *elf_hdr_inner = self.header.to_le(); 
-
-
-        let phdr_inner = block::get_phdr_inner(&mut self.blocks).unwrap(); 
-        // todo generate and set program header inner
-
-
-        // Assemble binary
-        let mut bin =  vec![]; 
-        for blk in self.blocks {
-            bin.extend(blk.to_bin()); 
-        }
-
-        for shd in shdrs {
-            bin.extend(shd.to_le()); 
-        }
+        // for shd in shdrs {
+        //     bin.extend(shd.to_le()); 
+        // }
         return bin;
     }
 
