@@ -13,10 +13,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "elf_editor"
+version = "0.1.0"
+dependencies = [
+ "elf 0.1.0",
+]
+
+[[package]]
 name = "elfinject"
 version = "0.1.0"
 dependencies = [
  "elf 0.1.0",
+ "elf_editor 0.1.0",
 ]
 
 [metadata]
