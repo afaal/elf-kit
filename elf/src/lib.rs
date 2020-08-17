@@ -115,13 +115,13 @@ pub struct Elf_header {
     e_entry: u64,
     e_flags: u32, 
     size: u16,
-    phdr_offset: u64,
-    phdr_size: u16,
-    phdr_num: u16,
-    shdr_offset: u64,
-    shdr_size: u16,
-    shdr_num: u16,
-    shstrndx: u16
+    pub phdr_offset: u64,
+    pub phdr_size: u16,
+    pub phdr_num: u16,
+    pub shdr_offset: u64,
+    pub shdr_size: u16,
+    pub shdr_num: u16,
+    pub shstrndx: u16
 }
 
 impl Elf_header {
@@ -158,59 +158,71 @@ impl Elf_header {
 
 
 pub struct Elf {
-    header: Elf_header,    // pub program_hdrs: Vec<phdr::ProgramHeader>,
-    pub segments: Vec<Segment>,
+    pub header: Elf_header,    // pub program_hdrs: Vec<phdr::ProgramHeader>,
+    pub phdrs: Vec<phdr::ProgramHeader>,
+    pub shdrs: Vec<shdr::SectionHeader>,
+    pub raw: Vec<u8>
+    // pub segments: Vec<Segment>,
     // pub section_hdrs: Vec<shdr::SectionHeader>,
 }
 
 impl Elf {
     // return the elf as a binary file
     pub fn to_le(mut self) -> Vec<u8> {
-        let mut bin = vec![];
+        // let mut bin = vec![];
 
-        // bin.resize(segment::get_segments_size(&self.segments) as usize, 0);
-
-        
-        // We need to create a new shstrndx using the segments 
-
-
-        // get segment blob
-        // TODO: We need to take nested segments into account.
-        let segment_blob = segment::get_segments_blob(&self.segments);  
-        
-        // TODO: calculate the elf header size, program header and section headers.
-        let ehdr_offset = 0x0; 
-        let phdr_offset = 0x40; 
-        let segment_offset = phdr_offset+segment::phdrs_size(&self.segments);
-        let shdr_offset = segment_offset+segment_blob.len(); 
-
-        // TODO: Set the offsets to be file offsets instead of local offsets
-        self.header.phdr_offset = phdr_offset as u64; 
-        self.header.phdr_num = self.segments.len() as u16; 
-        
-        self.header.shdr_offset = shdr_offset as u64; 
-        self.header.shdr_num = segment::shdrs_len(&self.segments) as u16; 
-
-
-        // - we need to have dynamic program header offsets as well -- implemented?
+        // // bin.resize(segment::get_segments_size(&self.segments) as usize, 0);
 
         
+        // // We need to create a new shstrndx using the segments 
+
+
+        // // get segment blob
+        // // TODO: We need to take nested segments into account.
+        // let segment_blob = segment::get_segments_blob(&self.segments);  
         
-        // alterations to the elf_headers offsets of section headers and program headers should be made before getting the blob 
-        // - change phdrs offset -- implemented
-        // - change shdrs offset -- implemented
-        let phdrs_blob = segment::get_phdrs_blob(&self.segments, segment_offset);         
-        let shdrs_blob = segment::get_shdrs_blob(&self.segments);         
-        let ehdr_blob = self.header.to_le(); 
+        // // TODO: calculate the elf header size, program header and section headers.
+        // let ehdr_offset = 0x0; 
+        // let phdr_offset = 0x40; 
+        // let segment_offset = phdr_offset+segment::phdrs_size(&self.segments);
+        // let shdr_offset = segment_offset+segment_blob.len(); 
+
+        // // TODO: Set the offsets to be file offsets instead of local offsets
+        // self.header.phdr_offset = phdr_offset as u64; 
+        // self.header.phdr_num = self.segments.len() as u16; 
+        
+        // self.header.shdr_offset = shdr_offset as u64; 
+        // self.header.shdr_num = segment::shdrs_len(&self.segments) as u16; 
+
+
+        // // - we need to have dynamic program header offsets as well -- implemented?
+
+        
+        
+        // // alterations to the elf_headers offsets of section headers and program headers should be made before getting the blob 
+        // // - change phdrs offset -- implemented
+        // // - change shdrs offset -- implemented
+        // let phdrs_blob = segment::get_phdrs_blob(&self.segments, segment_offset);         
+        // let shdrs_blob = segment::get_shdrs_blob(&self.segments);         
+        // let ehdr_blob = self.header.to_le(); 
 
         
 
-        bin.extend(ehdr_blob); 
-        bin.extend(phdrs_blob); 
-        bin.extend(segment_blob); 
-        bin.extend(shdrs_blob); 
+        // bin.extend(ehdr_blob); 
+        // bin.extend(phdrs_blob); 
+        // bin.extend(segment_blob); 
+        // bin.extend(shdrs_blob); 
+        let phdrt_start = self.header.phdr_offset; 
+        let phdrt_end = phdrt_start + (self.header.phdr_num*self.header.phdr_size) as u64; 
+        let phdrt_size = phdrt_end-phdrt_start; 
+    
+        // add elf header
+        self.raw.splice(0..0x40, self.header.to_le()); 
 
-        return bin;
+        // add program headers 
+        self.raw.splice(phdrt_start as usize..phdrt_end as usize, phdr::to_le(self.phdrs) ); 
+
+        return self.raw;
     }
 
     pub fn write_file(self, path: &str) -> Result<()> {
@@ -228,9 +240,15 @@ fn pad(size: u32) -> Vec<u8> {
 
 impl Elf {
     fn parse(bin: Vec<u8>) -> Result<Elf> {
+        let shstrndx = LittleEndian::read_u16(&bin[0x3E..0x40]); 
+        let program_hdrs = phdr::parse_program_header(&bin)?;
+        let section_hdrs = shdr::parse_section_header(&bin, shstrndx)?; 
+
         return Ok(Elf {
-            header: Elf_header::parse(&bin)?, 
-            segments: segment::parse_segments(bin)?,
+            header: Elf_header::parse(&bin)?,
+            phdrs:program_hdrs,
+            shdrs: section_hdrs,
+            raw: bin
         })
     }
 }

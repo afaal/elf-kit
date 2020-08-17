@@ -117,3 +117,13 @@ pub fn parse_program_header(bin: &Vec<u8>) -> Result<Vec<ProgramHeader>> {
 
     return Ok(phdrs);
 }
+
+pub fn to_le(phdrs: Vec<ProgramHeader> ) -> Vec<u8> {
+    let mut bin = vec![]; 
+
+    for phdr in phdrs {
+        bin.extend(phdr.to_le()); 
+    }
+
+    return bin; 
+}
