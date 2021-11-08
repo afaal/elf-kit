@@ -405,7 +405,7 @@ fn parse_endianness(bin: &Vec<u8>) -> Elf_endiannes {
     }
 }
 
-pub fn read_file(path: &str) -> Result<Elf> {
+pub fn from_file(path: &str) -> Result<Elf> {
     let bin = fs::read(path).expect("Failed to read path"); 
     Elf::parse(bin) 
 }

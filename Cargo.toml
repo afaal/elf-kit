@@ -11,10 +11,8 @@ A utility for analyzing and manipulating ELF-binary objects in a security contex
 
 [workspace]
 members = [
-    "elf",
-    "elf_editor"
+    "elf"
 ]
 
 [dependencies]
 elf = { path = "./elf" }
-elf_editor = { path = "./elf_editor" }

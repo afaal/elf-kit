@@ -3,11 +3,14 @@ use std::result::*;
 
 fn main() {
 
-    let mut bin = elf::read_file("test/testBin").expect("Failed to open file"); 
-    
-    elf_editor::remove_shdrs(&mut bin); 
-    elf_editor::remove_ne_phdrs(&mut bin); 
+    let mut elf = elf::from_file("test/testBin").expect("Failed to open file"); 
 
-    
-    bin.write_file("test/testBin.new"); 
+    // API 
+    // elf.inject( ELF )
+    // elf.strip()
+    // elf.obfuscate()
+    // elf.encrypt( key )
+    // elf.pack(Packer::UPX)
+    // elf.save( path )
+
 }
